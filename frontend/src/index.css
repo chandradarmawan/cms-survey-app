@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-background text-text-primary;
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Material Symbols Outlined — ikon sesuai design system */
+  .material-symbols-outlined {
+    font-family: 'Material Symbols Outlined';
+    font-weight: normal;
+    font-style: normal;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+    -webkit-font-feature-settings: 'liga';
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+@layer components {
+  /* Tombol — §4.4 */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded px-4 h-10 text-body-md font-medium transition-colors;
+  }
+  .btn-primary {
+    @apply btn bg-primary text-white hover:bg-primary-dark;
+  }
+  .btn-secondary {
+    @apply btn bg-surface border border-border text-primary hover:bg-primary-tint;
+  }
+  .btn-ghost {
+    @apply btn text-primary hover:bg-primary-tint;
+  }
+
+  /* Input — §4.4 */
+  .input {
+    @apply h-10 w-full rounded border border-border bg-surface px-3 text-body-md
+      placeholder:text-text-secondary focus:border-primary focus:outline-none;
+  }
+
+  /* Kartu — §4.4 */
+  .card {
+    @apply rounded border border-border bg-surface;
+  }
+}
