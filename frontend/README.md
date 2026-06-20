@@ -30,7 +30,7 @@ Alur end-to-end yang bisa didemokan: **Daftar Survei → Buat Survei (kosong/dup
 
 ## Arsitektur singkat
 
-> Detail lengkap: **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)**.
+> Detail lengkap: **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** · Rancangan DB backend: **[docs/DATABASE.md](docs/DATABASE.md)**.
 
 - **Sumber data**: `src/store/useSurveyStore.ts` (Zustand) + `src/store/seed.ts` (PRD §12). Komponen baca via selector, ubah via action — sinkron otomatis tanpa refetch.
 - **Lapisan akses tipis**: `src/data/*` membungkus store; signature dipetakan ke REST (PRD §7) agar mudah ditukar ke `fetch` nanti.

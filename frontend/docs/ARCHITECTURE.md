@@ -326,6 +326,8 @@ di luar komponen React).
 
 ### Menambah backend nyata (mengganti dummy API)
 
+> Rancangan skema database & ERD lengkap: **[DATABASE.md](DATABASE.md)**.
+
 Hanya sentuh **`src/data/*`**. Tiap fungsi sudah diberi komentar route REST yang dituju:
 
 ```ts
