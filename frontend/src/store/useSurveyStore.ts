@@ -4,18 +4,27 @@ import { create } from 'zustand';
 import type {
   ConditionGroup,
   IdentityField,
+  InvitationStatus,
   JenisNota,
   Question,
+  ResponseAnswer,
+  ResponseSubmission,
   Scale,
+  SubmitResult,
   Survey,
+  SurveyInvitation,
+  SurveyResponse,
+  Transaction,
 } from '@/types';
 import { genId } from '@/lib/id';
 import { nowIso } from '@/lib/format';
+import { answerScore, channelForJenisNota, computeCsi } from '@/lib/scoring';
 import {
   seedIdentityFields,
   seedQuestions,
   seedScales,
   seedSurveys,
+  seedTransactions,
 } from './seed';
 
 export interface CreateSurveyInput {
@@ -35,6 +44,10 @@ interface SurveyState {
   questions: Question[];
   scales: Scale[];
   identityFields: IdentityField[];
+  // Lapisan transaksi (docs/DATABASE.md §6)
+  transactions: Transaction[];
+  invitations: SurveyInvitation[];
+  responses: SurveyResponse[];
 
   // actions
   createSurvey: (input: CreateSurveyInput) => Survey;
@@ -56,6 +69,11 @@ interface SurveyState {
   updateIdentityField: (id: string, patch: Partial<IdentityField>) => void;
   deleteIdentityField: (id: string) => void;
   reorderIdentityFields: (surveyId: string, orderedIds: string[]) => void;
+
+  // Transaksi: distribusi & pengumpulan jawaban (docs/DATABASE.md §6)
+  generateInvitations: (surveyId: string) => SurveyInvitation[];
+  markInvitationOpened: (token: string) => void;
+  submitResponse: (token: string, payload: ResponseSubmission) => SubmitResult;
 }
 
 function recalcChildCount(questions: Question[], parentId: string): number {
@@ -71,6 +89,9 @@ export const useSurveyStore = create<SurveyState>((set, get) => ({
   questions: seedQuestions,
   scales: seedScales,
   identityFields: seedIdentityFields,
+  transactions: seedTransactions,
+  invitations: [],
+  responses: [],
 
   createSurvey: (input) => {
     const id = genId('srv');
@@ -260,4 +281,101 @@ export const useSurveyStore = create<SurveyState>((set, get) => ({
         return idx >= 0 ? { ...f, urutan: idx + 1 } : f;
       }),
     })),
+
+  // ---- Transaksi (docs/DATABASE.md §6) ----
+
+  // Buat undangan untuk tiap transaksi sejenis-nota yang belum diundang (sekali per transaksi).
+  generateInvitations: (surveyId) => {
+    const state = get();
+    const survey = state.surveys.find((sv) => sv.id === surveyId);
+    if (!survey) return [];
+    const sudah = new Set(
+      state.invitations.filter((i) => i.surveyId === surveyId).map((i) => i.transactionId),
+    );
+    const ts = nowIso();
+    const created: SurveyInvitation[] = state.transactions
+      .filter((t) => t.jenisNota === survey.jenisNota && !sudah.has(t.id))
+      .map((t) => ({
+        id: genId('inv'),
+        surveyId,
+        transactionId: t.id,
+        token: genId('tok'),
+        channel: channelForJenisNota(survey.jenisNota),
+        status: 'terkirim' as InvitationStatus,
+        sentAt: ts,
+        createdAt: ts,
+      }));
+    if (created.length) set((s) => ({ invitations: [...s.invitations, ...created] }));
+    return created;
+  },
+
+  markInvitationOpened: (token) =>
+    set((s) => ({
+      invitations: s.invitations.map((i) =>
+        i.token === token && i.status === 'terkirim'
+          ? { ...i, status: 'dibuka', openedAt: nowIso() }
+          : i,
+      ),
+    })),
+
+  // Submit atomik: response + answers (snapshot + skor) + identitas; tandai undangan selesai.
+  submitResponse: (token, payload) => {
+    const state = get();
+    const inv = state.invitations.find((i) => i.token === token);
+    if (!inv) return { ok: false, error: 'Tautan tidak valid atau sudah tidak berlaku.' };
+    if (inv.status === 'selesai' || state.responses.some((r) => r.invitationId === inv.id)) {
+      return { ok: false, error: 'Survei untuk tautan ini sudah pernah diisi.' };
+    }
+
+    const byKode = new Map(
+      state.questions.filter((q) => q.surveyId === inv.surveyId).map((q) => [q.kode, q]),
+    );
+    const answers: ResponseAnswer[] = payload.jawaban.map((j) => {
+      const q = byKode.get(j.kode);
+      const tipe = q?.tipe ?? 'TEKS';
+      const { skor, skorNormal } = answerScore(
+        { tipe, scale: q?.scale, options: q?.options },
+        { valueText: j.valueText, valueNumber: j.valueNumber, valueOptions: j.valueJson },
+      );
+      return {
+        questionKode: j.kode,
+        sourceQuestionId: q?.id,
+        teks: q?.teks ?? j.teks,
+        tipe,
+        scale: q?.scale,
+        options: q?.options,
+        valueText: j.valueText,
+        valueNumber: j.valueNumber,
+        valueOptions: j.valueJson,
+        skor,
+        skorNormal,
+        bobot: 1, // authoring belum punya bobot → seragam (lihat catatan §6 doc)
+      };
+    });
+    const npsAns = answers.find((a) => a.tipe === 'NPS' && a.valueNumber != null);
+
+    const response: SurveyResponse = {
+      id: genId('resp'),
+      invitationId: inv.id,
+      surveyId: inv.surveyId,
+      transactionId: inv.transactionId,
+      submittedAt: payload.submittedAt ?? nowIso(),
+      channel: inv.channel,
+      npsValue: npsAns?.valueNumber,
+      csi: computeCsi(answers),
+      answers,
+      identity: payload.identitas.map((it, i) => ({ ...it, urutan: i + 1 })),
+    };
+
+    set((s) => ({
+      responses: [...s.responses, response],
+      invitations: s.invitations.map((i) =>
+        i.id === inv.id ? { ...i, status: 'selesai', openedAt: i.openedAt ?? nowIso() } : i,
+      ),
+      surveys: s.surveys.map((sv) =>
+        sv.id === inv.surveyId ? { ...sv, jumlahResponden: sv.jumlahResponden + 1 } : sv,
+      ),
+    }));
+    return { ok: true, response };
+  },
 }));

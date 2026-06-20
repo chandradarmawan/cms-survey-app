@@ -214,7 +214,7 @@ export function SurveyListPage() {
                               {
                                 label: 'Hasil',
                                 icon: 'bar_chart',
-                                onSelect: () => navigate(`/surveys/${row.id}/results`),
+                                onSelect: () => navigate(`/hasil/${row.id}`),
                               },
                               {
                                 label: 'Duplikat',

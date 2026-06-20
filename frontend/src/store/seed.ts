@@ -2,7 +2,15 @@
 // Bentuk data mengikuti rancangan DB compact: tiap array = satu tabel; options/logic/labels
 // tersimpan apa adanya (kolom JSONB). jumlahPertanyaan & childCount DITURUNKAN di bawah
 // (cermin DATABASE.md §5) agar count selalu konsisten dengan data — bukan di-hardcode.
-import type { IdentityField, Question, Scale, ScaleSnapshot, Survey } from "@/types";
+import type {
+  IdentityField,
+  JenisNota,
+  Question,
+  Scale,
+  ScaleSnapshot,
+  Survey,
+  Transaction,
+} from "@/types";
 import { scaleSnapshot } from "@/lib/questionMeta";
 
 // ---- §12.4 Scales (global, dipakai lintas survei) ----
@@ -1006,6 +1014,65 @@ export const seedIdentityFields: IdentityField[] = [
   ...buildIdentity("srv_02", "02", identitySrv02),
   ...buildIdentity("srv_03", "03", identitySrv03),
   ...buildIdentity("srv_04", "04", identitySrv04),
+];
+
+// ---- Transaksi (cermin "list transaksi" Pelindo) — sumber undangan & identitas OTOMATIS ----
+// Bervariasi per cabang/perusahaan agar dashboard punya keragaman untuk di-breakdown.
+function buildTransactions(
+  prefix: string,
+  jenisNota: JenisNota,
+  count: number,
+  cabang: string[],
+  perusahaan: string[],
+): Transaction[] {
+  return Array.from({ length: count }, (_, i) => {
+    const cab = cabang[i % cabang.length];
+    return {
+      id: `txn_${prefix}_${String(i + 1).padStart(2, "0")}`,
+      noBilling: `${prefix.toUpperCase()}26${String(100000 + i * 137)}`,
+      jenisNota,
+      namaCabang: cab,
+      namaEntitas: `Pelindo ${cab.split(" [")[0]}`,
+      namaPerusahaan: perusahaan[i % perusahaan.length],
+      email: `resp${String(i + 1).padStart(2, "0")}.${prefix}@contoh.co.id`,
+      tanggalTransaksi: `2026-06-${String((i % 27) + 1).padStart(2, "0")}`,
+    };
+  });
+}
+
+const CABANG_DOM = [
+  "Tanjung Priok [TPK]",
+  "Tanjung Perak [TPS]",
+  "Belawan [BICT]",
+  "Makassar [MNP]",
+  "TPK Merauke [TPK Merauke]",
+];
+const CABANG_INT = ["Tanjung Priok [TPK]", "Belawan [BICT]", "Makassar [MNP]"];
+const CABANG_SPSL = ["Tanjung Priok [TPK]", "Tanjung Perak [TPS]", "Semarang [TPKS]"];
+
+const PERUSAHAAN_DOM = [
+  "PT. Karya Baruna Raya",
+  "PT. Samudra Jaya Logistik",
+  "PT. Nusantara Kargo",
+  "CV. Bahari Mandiri",
+  "PT. Lintas Benua",
+];
+const PERUSAHAAN_INT = [
+  "Maersk Line Indonesia",
+  "Evergreen Marine",
+  "PT. Ocean Global Trans",
+  "CMA CGM Indonesia",
+];
+const PERUSAHAAN_SPSL = [
+  "PT. Integrasi Logistik Cipta",
+  "PT. Multi Terminal Indonesia",
+  "PT. Energi Pelabuhan",
+];
+
+export const seedTransactions: Transaction[] = [
+  ...buildTransactions("dom", "Domestik", 14, CABANG_DOM, PERUSAHAAN_DOM),
+  ...buildTransactions("int", "Internasional", 10, CABANG_INT, PERUSAHAAN_INT),
+  ...buildTransactions("spsl", "SPSL Group", 8, CABANG_SPSL, PERUSAHAAN_SPSL),
 ];
 
 // ---- Finalize: turunkan denormalized count (cermin DATABASE.md §5) ----

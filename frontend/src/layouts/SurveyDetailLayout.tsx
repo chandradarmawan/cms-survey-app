@@ -13,7 +13,8 @@ import { ui } from '@/i18n/id';
 // Skala kini di Master data (data referensi global), bukan sub-tab survei.
 const SUB_TABS: SubTabItem[] = [
   { label: ui.surveyTabs.questions, to: 'questions' },
-  { label: ui.surveyTabs.results, to: 'results' },
+  { label: ui.surveyTabs.preview, to: 'preview' },
+  { label: ui.surveyTabs.distribusi, to: 'distribusi' },
 ];
 
 export function SurveyDetailLayout() {
@@ -60,7 +61,7 @@ export function SurveyDetailLayout() {
         <div className="flex items-center gap-2">
           <button
             className="btn-secondary"
-            onClick={() => showToast('Preview tersedia setelah modul responden')}
+            onClick={() => navigate(`/surveys/${surveyId}/preview`)}
           >
             <Icon name="visibility" size={18} />
             Preview

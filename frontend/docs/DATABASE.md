@@ -283,30 +283,187 @@ FROM questions q WHERE q.survey_id = $1 ORDER BY q.urutan;
 
 ---
 
-## 6. Fase 2 — Responden & Jawaban (opsional)
+## 6. Skema Transaksi — Distribusi, Responden & Jawaban
 
-Belum ada di front-end (tab Hasil stub). Bila perlu menampung jawaban, tambah dua tabel; jawaban
-tetap rapi sebagai kolom (bukan JSONB) karena di sinilah analitik benar-benar terjadi:
+Lapisan **OLTP** untuk mengumpulkan isian responden (tab Hasil). Berbeda dari §2 (CMS untuk
+*menyusun* kuesioner), bagian ini *menangkap & menganalisis* jawaban. Keputusan desain (dikonfirmasi):
+
+1. **Snapshot per response.** Saat submit, struktur pertanyaan + skala + bobot **disalin** ke baris
+   `answers`. Dashboard membaca dari jawaban responden, **bukan** dari master `questions`/`scales` —
+   sehingga mengedit/menghapus pertanyaan tidak menggeser arti data historis. (Konsisten dengan pola
+   snapshot skala di §2.4.)
+2. **Semua via link ber-token**, di-generate dari **list transaksi** (anchor identitas). Kanal kirim
+   (QR di invoice / email) ditentukan **jenis nota**. Identitas `OTOMATIS` diambil dari transaksi.
+3. **Sekali submit** — tidak ada draft; satu transaksi DB atomik per pengiriman.
+4. **Skor + agregat disimpan** — skor per jawaban (snapshot bobot), plus ringkasan CSI/NPS per survei
+   & per pertanyaan, di-refresh saat submit.
+
+### 6.1 ERD (lapisan transaksi)
+
+```mermaid
+erDiagram
+    TRANSACTIONS       ||--o{ SURVEY_INVITATIONS : "diundang"
+    SURVEYS            ||--o{ SURVEY_INVITATIONS : "menyebar"
+    SURVEY_INVITATIONS ||--o| RESPONSES          : "menghasilkan (1:1)"
+    RESPONSES          ||--o{ ANSWERS             : "berisi"
+    RESPONSES          ||--o{ RESPONSE_IDENTITY   : "snapshot identitas"
+    QUESTIONS          }o--o| ANSWERS             : "provenance (SET NULL)"
+    SURVEYS            ||--o| SURVEY_RESULT_SUMMARY   : "ringkasan"
+    SURVEYS            ||--o{ QUESTION_RESULT_SUMMARY : "ringkasan/pertanyaan"
+```
+
+### 6.2 Enum tambahan
 
 ```sql
-CREATE TABLE responses (
-  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  survey_id    uuid        NOT NULL REFERENCES surveys(id) ON DELETE CASCADE,
-  submitted_at timestamptz NOT NULL DEFAULT now()
-);
+CREATE TYPE invitation_channel AS ENUM ('QR','EMAIL');
+CREATE TYPE invitation_status  AS ENUM ('dibuat','terkirim','dibuka','selesai','kedaluwarsa');
+```
 
-CREATE TABLE answers (
-  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  response_id  uuid NOT NULL REFERENCES responses(id) ON DELETE CASCADE,
-  question_id  uuid NOT NULL REFERENCES questions(id) ON DELETE CASCADE,
-  value_text   text,     -- TEKS / YA_TIDAK
-  value_number integer,  -- skala / NPS
-  value_json   jsonb,    -- PILIHAN_GANDA: ["opt_1","opt_3"]
-  UNIQUE (response_id, question_id)
+### 6.3 `transactions` — sumber identitas (sinkron dari billing)
+
+Representasi lokal "list transaksi" Pelindo; jadi anchor identitas `OTOMATIS` & kunci anti-duplikat.
+Kolom umum eksplisit + `attrs jsonb` untuk field yang bervariasi antar jenis nota.
+
+```sql
+CREATE TABLE transactions (
+  id                uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  no_billing        text NOT NULL UNIQUE,
+  jenis_nota        text NOT NULL,              -- Domestik | Internasional | SPSL Group
+  nama_cabang       text,
+  nama_entitas      text,
+  nama_perusahaan   text,                       -- / nama kapal
+  email             text,                       -- target kirim bila kanal EMAIL
+  attrs             jsonb,                       -- field OTOMATIS lain (fleksibel per jenis nota)
+  tanggal_transaksi date,
+  created_at        timestamptz NOT NULL DEFAULT now()
 );
 ```
 
-Lalu `jumlah_responden` = `COUNT(responses WHERE survey_id=…)`.
+### 6.4 `survey_invitations` — link/token (1 undangan per transaksi per survei)
+
+```sql
+CREATE TABLE survey_invitations (
+  id             uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  survey_id      uuid NOT NULL REFERENCES surveys(id)      ON DELETE CASCADE,
+  transaction_id uuid NOT NULL REFERENCES transactions(id) ON DELETE RESTRICT,
+  token          text NOT NULL UNIQUE,          -- dipakai di URL: /isi/:token
+  channel        invitation_channel NOT NULL,   -- diturunkan dari jenis_nota
+  status         invitation_status  NOT NULL DEFAULT 'dibuat',
+  sent_at        timestamptz,
+  opened_at      timestamptz,
+  expires_at     timestamptz,
+  created_at     timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (survey_id, transaction_id)            -- cegah undangan ganda
+);
+CREATE INDEX idx_invitations_survey ON survey_invitations (survey_id, status);
+```
+
+### 6.5 `responses` — 1:1 dengan undangan (dibuat saat submit)
+
+```sql
+CREATE TABLE responses (
+  id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  invitation_id uuid NOT NULL UNIQUE REFERENCES survey_invitations(id) ON DELETE CASCADE,
+  survey_id     uuid NOT NULL REFERENCES surveys(id) ON DELETE CASCADE, -- denormal: query cepat
+  submitted_at  timestamptz NOT NULL DEFAULT now(),
+  channel       invitation_channel NOT NULL,
+  csi           numeric,        -- indeks kepuasan response ini (0..100), bila relevan
+  nps_value     smallint,       -- nilai NPS 0..10 response ini, bila ada
+  meta          jsonb           -- user-agent, durasi pengisian, dll.
+);
+CREATE INDEX idx_responses_survey ON responses (survey_id, submitted_at);
+```
+
+> `invitation_id UNIQUE` + `UNIQUE(survey_id, transaction_id)` di undangan = **anti-duplikat berlapis**:
+> satu transaksi → satu undangan → satu response. (Sesuai "sekali submit".)
+
+### 6.6 `response_identity` — snapshot nilai identitas (untuk filter dashboard)
+
+Nilai field identitas dibekukan saat submit: `OTOMATIS` dari transaksi, `ISIAN`/`PILIHAN` dari form,
+`SISTEM` dari server. Tabel (bukan JSONB) agar mudah **filter/group** (mis. CSI per Nama Cabang).
+
+```sql
+CREATE TABLE response_identity (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  response_id uuid NOT NULL REFERENCES responses(id) ON DELETE CASCADE,
+  nama        text NOT NULL,            -- "Nama Cabang", "Kategori Responden"
+  sumber      identity_source NOT NULL,
+  nilai       text,                     -- nilai tersnapshot
+  urutan      integer NOT NULL,
+  UNIQUE (response_id, nama)
+);
+CREATE INDEX idx_resp_identity_filter ON response_identity (nama, nilai);
+```
+
+### 6.7 `answers` — 1 per (response, pertanyaan), snapshot + skor
+
+Jawaban tetap **kolom bertipe** (bukan JSONB mentah) karena di sinilah analitik terjadi; `question_snapshot`
+menjadikan tiap baris self-describing meski master berubah.
+
+```sql
+CREATE TABLE answers (
+  id                 uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  response_id        uuid NOT NULL REFERENCES responses(id) ON DELETE CASCADE,
+  survey_id          uuid NOT NULL,                 -- denormal: group-by lintas response
+  source_question_id uuid REFERENCES questions(id) ON DELETE SET NULL,  -- provenance
+  question_kode      text NOT NULL,                 -- "C1.1" (stabil walau master dihapus)
+  question_snapshot  jsonb NOT NULL,                -- { teks, tipe, scale?, options? } saat submit
+  value_text         text,        -- TEKS / YA_TIDAK ('Ya'/'Tidak')
+  value_number       numeric,     -- SKALA (poin) / NPS (0..10)
+  value_options      jsonb,       -- PILIHAN_*: label terpilih ["..."] (tunggal = 1 elemen)
+  skor               numeric,     -- skor mentah (poin skala / option.skor)
+  skor_normal        numeric,     -- 0..1 untuk CSI = (skor-1)/(poin-1)
+  bobot              numeric,     -- bobot pertanyaan saat submit (snapshot, default 1)
+  UNIQUE (response_id, question_kode)
+);
+CREATE INDEX idx_answers_q ON answers (survey_id, question_kode);
+```
+
+> Pertanyaan yang **tersembunyi** karena logika tampil tidak menghasilkan baris `answers` — wajar & natural.
+
+### 6.8 Agregat tersimpan (di-refresh saat submit)
+
+```sql
+CREATE TABLE survey_result_summary (
+  survey_id        uuid PRIMARY KEY REFERENCES surveys(id) ON DELETE CASCADE,
+  jumlah_responden integer NOT NULL DEFAULT 0,
+  csi              numeric,        -- rata-rata berbobot skor_normal × 100
+  nps_score        numeric,        -- %promotor (9–10) − %detraktor (0–6)
+  updated_at       timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE question_result_summary (
+  survey_id     uuid NOT NULL REFERENCES surveys(id) ON DELETE CASCADE,
+  question_kode text NOT NULL,
+  n             integer NOT NULL DEFAULT 0,
+  avg_skor      numeric,
+  distribusi    jsonb,            -- {"Sangat puas":12,"Puas":30,...} atau {"0":..,"10":..}
+  PRIMARY KEY (survey_id, question_kode)
+);
+```
+
+> **Alternatif:** karena agregat 100% derivable dari `answers`, keduanya bisa diganti **materialized view**
+> yang di-`REFRESH` periodik. Karena keputusan = "simpan agregat", desain di atas memilih tabel yang
+> di-update **di dalam transaksi submit** (selalu konsisten, baca dashboard murah).
+
+### 6.9 Transaksi tulis (atomik) saat submit
+
+Satu `BEGIN…COMMIT` menjamin response + jawaban + identitas + agregat konsisten:
+
+```text
+BEGIN;
+  -- 0. validasi token: invitation ada, status ∈ (terkirim|dibuka), belum punya response, belum kedaluwarsa
+  INSERT INTO responses(...) ...;                       -- 1
+  INSERT INTO answers(...) SELECT ...;                  -- 2 (+ hitung skor/skor_normal dari snapshot)
+  INSERT INTO response_identity(...) ...;               -- 3 (OTOMATIS dari transaksi, ISIAN/PILIHAN dari form)
+  UPDATE survey_invitations SET status='selesai' WHERE id = :inv;   -- 4
+  -- 5. refresh agregat survei & per-pertanyaan (UPSERT survey_result_summary / question_result_summary)
+COMMIT;
+```
+
+- **Idempoten/anti-ganda:** `UNIQUE(invitation_id)` di `responses` membuat submit kedua gagal di langkah 1.
+- **CSI** = `Σ(skor_normal × bobot) / Σ(bobot) × 100` atas pertanyaan ber-skor.
+- **NPS** = `%(value_number 9–10) − %(value_number 0–6)` atas pertanyaan tipe `NPS`.
 
 ---
 

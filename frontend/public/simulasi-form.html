@@ -1,0 +1,441 @@
+<title>Simulasi Form Survei — Semua Tipe & Seed Data</title>
+<style>
+  :root{
+    --primary:#185FA5; --primary-dark:#004782; --primary-tint:#F0F7FF; --accent:#FF9800;
+    --bg:#F8F9FF; --surface:#fff; --border:#E2E8F0; --border-strong:#CBD5E1;
+    --text:#0B1C30; --text2:#64748B; --success:#16A34A; --error:#BA1A1A;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;line-height:1.45;}
+  .wrap{max-width:880px;margin:0 auto;padding:24px 16px 80px;}
+  header.top{margin-bottom:18px;}
+  header.top h1{font-size:22px;font-weight:600;margin:0;}
+  header.top p{margin:4px 0 0;color:var(--text2);font-size:14px;}
+  .note{display:inline-flex;align-items:center;gap:6px;margin-top:10px;font-size:13px;color:var(--text2);
+    background:var(--primary-tint);border:1px solid var(--border);border-radius:8px;padding:6px 10px;}
+  .tabs{display:flex;flex-wrap:wrap;gap:4px;border-bottom:1px solid var(--border);margin-bottom:20px;}
+  .tab{appearance:none;border:0;background:none;cursor:pointer;font:inherit;font-size:13px;font-weight:500;
+    color:var(--text2);padding:9px 14px;border-bottom:2px solid transparent;margin-bottom:-1px;border-radius:6px 6px 0 0;}
+  .tab:hover{color:var(--text)}
+  .tab.active{color:var(--primary);border-bottom-color:var(--primary);}
+  .formcard{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:28px;}
+  .formhead{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:18px;}
+  .formhead h2.title{font-size:20px;font-weight:600;margin:0;}
+  .formhead .kode{font-family:ui-monospace,monospace;color:var(--text2);font-size:13px;}
+  section.blk{margin-top:8px}
+  hr{border:0;border-top:1px solid var(--border);margin:24px 0;}
+  h2.sec{font-size:16px;font-weight:600;margin:0 0 14px;}
+  .lead{color:var(--text);font-size:14px;margin:6px 0;}
+  .lead.muted{color:var(--text2);}
+  .idrow{margin-bottom:14px;}
+  label.flbl{display:block;font-size:14px;font-weight:500;margin-bottom:6px;}
+  .req{color:var(--error);margin-left:2px;}
+  .input,select.input,textarea.input{width:100%;border:1px solid var(--border);border-radius:8px;
+    background:var(--surface);padding:0 12px;height:40px;font:inherit;font-size:14px;color:var(--text);}
+  textarea.input{height:auto;padding:8px 12px;min-height:74px;resize:vertical;}
+  .input:focus{outline:none;border-color:var(--primary);}
+  .input.ro{background:var(--bg);color:var(--text2);cursor:default;}
+  .input.err{border-color:var(--error);}
+  .billrow{display:flex;gap:8px;align-items:center;}
+  .btn-primary{appearance:none;border:0;cursor:pointer;font:inherit;font-weight:500;font-size:14px;
+    background:var(--primary);color:#fff;height:40px;padding:0 16px;border-radius:8px;display:inline-flex;align-items:center;gap:6px;}
+  .btn-primary:hover{background:var(--primary-dark);}
+  .btn-ghost{appearance:none;border:0;cursor:pointer;font:inherit;font-weight:500;font-size:14px;
+    background:none;color:var(--primary);height:40px;padding:0 12px;border-radius:8px;}
+  .btn-ghost:hover{background:var(--primary-tint);}
+  .qnode{display:flex;flex-direction:column;gap:10px;}
+  .qlist>.qnode{margin-bottom:24px;}
+  .qtext{font-size:14px;}
+  .qtext .qk{font-weight:600;color:var(--text2);margin-right:4px;}
+  .grp{display:flex;flex-direction:column;gap:16px;}
+  .grp>.grpkids{display:flex;flex-direction:column;gap:20px;border-left:2px solid var(--border);padding-left:16px;}
+  .grphead{font-size:14px;font-weight:500;}
+  .deps{display:inline-block;font-size:11px;color:#C2410C;background:#FFF7ED;border:1px solid #fed7aa;
+    border-radius:999px;padding:1px 8px;margin-left:6px;vertical-align:middle;}
+  .opts{display:flex;flex-direction:column;gap:9px;}
+  .opts.stars{flex-direction:row;flex-wrap:wrap;gap:10px 28px;}
+  .opt{display:flex;align-items:flex-start;gap:8px;cursor:pointer;font-size:14px;}
+  .opt.inline{align-items:center;}
+  .opt input{margin-top:2px;accent-color:var(--primary);width:16px;height:16px;}
+  .opt.inline input{margin-top:0;}
+  .optbody{display:flex;flex-direction:column;gap:2px;}
+  .stars span.star{color:rgba(11,28,48,.28);font-size:17px;line-height:1;}
+  .stars span.star.on{color:var(--accent);}
+  .optlbl{color:var(--text2);font-size:13px;}
+  .nps{display:flex;flex-wrap:wrap;gap:6px;}
+  .npschip{cursor:pointer;width:38px;height:38px;border:1px solid var(--border);border-radius:8px;
+    display:flex;align-items:center;justify-content:center;font-size:13px;}
+  .npschip:hover{border-color:var(--border-strong);}
+  .npschip.sel{background:var(--primary);border-color:var(--primary);color:#fff;font-weight:500;}
+  .npsends{display:flex;justify-content:space-between;font-size:13px;color:var(--text2);margin-top:6px;}
+  .errtext{color:var(--error);font-size:13px;margin-top:2px;}
+  .actions{display:flex;justify-content:space-between;align-items:center;margin-top:8px;}
+  .warnbar{margin-top:16px;background:#FFF7ED;border:1px solid #fed7aa;color:#C2410C;border-radius:8px;padding:10px 14px;font-size:14px;}
+  .okbar{margin-top:16px;background:#DCFCE7;border:1px solid #bbf7d0;color:#166534;border-radius:8px;padding:10px 14px;font-size:14px;
+    display:flex;align-items:center;gap:8px;}
+  .sumbox{margin-top:14px;border:1px solid var(--border);border-radius:8px;padding:16px;background:var(--surface);}
+  .sumh{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--text2);margin:0 0 8px;}
+  .sumrow{display:flex;justify-content:space-between;gap:12px;font-size:13px;padding:2px 0;}
+  .sumrow dt{color:var(--text2)}
+  .sumrow dd{margin:0;font-weight:500;text-align:right;}
+  .sumli{font-size:13px;padding:2px 0;}
+  .sumli .k{font-family:ui-monospace,monospace;color:var(--text2);margin-right:6px;}
+  details pre{margin:8px 0 0;background:var(--bg);border-radius:8px;padding:12px;font-size:12px;overflow:auto;max-height:260px;}
+  details>summary{cursor:pointer;color:var(--primary);font-size:13px;}
+  .badge{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:2px 9px;font-size:12px;font-weight:500;}
+  .badge.draft{background:#FFF7ED;color:#C2410C;} .badge.aktif{background:#DCFCE7;color:var(--success);}
+  .badge.selesai{background:var(--primary-tint);color:var(--primary);} .badge.arsip{background:#F1F5F9;color:var(--text2);}
+  .nota{display:inline-flex;border-radius:6px;padding:1px 8px;font-size:12px;font-weight:500;background:var(--primary-tint);color:var(--primary);}
+  .catnote{font-size:13px;color:var(--text2);margin:-6px 0 16px;}
+  .typetag{display:inline-block;font-size:11px;font-weight:500;color:var(--primary);background:var(--primary-tint);border-radius:6px;padding:1px 8px;margin-left:8px;vertical-align:middle;}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <h1>Simulasi Form Survei Kepuasan</h1>
+    <p>Form digenerate dari konfigurasi survei (identitas + pertanyaan) — Pelindo Survey CMS.</p>
+    <div class="note">● Simulasi interaktif — bintang &amp; pilihan bisa diklik, logika bersyarat aktif, submit hanya menampilkan ringkasan. Tidak ada data disimpan.</div>
+  </header>
+  <nav class="tabs" id="tabs"></nav>
+  <main id="view"></main>
+</div>
+
+<script>
+/* ---------- Skala (master → snapshot dipakai render) ---------- */
+const SCALES = {
+  scl_puas4:{tipe:'KEPUASAN',poin:4,labels:['Sangat tidak puas','Tidak puas','Puas','Sangat puas']},
+  scl_setuju4:{tipe:'PERSETUJUAN',poin:4,labels:['Sangat tidak setuju','Tidak setuju','Setuju','Sangat setuju']},
+  scl_nps:{tipe:'NPS',poin:11,labels:['0','1','2','3','4','5','6','7','8','9','10'],endpointKiri:'Sangat Tidak Mungkin',endpointKanan:'Sangat Mungkin'},
+};
+
+/* ---------- Helper identitas (mirror engine.ts) ---------- */
+function autoValue(f){
+  if(f.sumber==='SISTEM') return '20 Jun 2026';
+  const n=f.nama.toLowerCase();
+  if(n.includes('billing')) return '182408DP01218';
+  if(n.includes('kontrak')) return 'KTR-2026-00417';
+  if(n.includes('npwp')) return '01.234.567.8-051.000';
+  if(n.includes('entitas')) return 'TPK Merauke [SPTP]';
+  if(n.includes('cabang')) return 'TPK Merauke [TPK Merauke]';
+  if(n.includes('kapal')||n.includes('vessel')) return 'MV. KARYA BARUNA RAYA';
+  if(n.includes('agen')) return 'PT. PELAYARAN NUSANTARA';
+  if(n.includes('perusahaan')) return 'PT. KARYA BARUNA RAYA';
+  if(n.includes('enumerator')) return 'Andi Pratama';
+  if(n.includes('negara')) return 'Singapura';
+  return 'Lookup dari database Pelindo';
+}
+function choiceOptions(f){
+  const n=f.nama.toLowerCase();
+  if(n.includes('kategori')) return ['Pelanggan Korporasi','Pelanggan Perorangan','Mitra Logistik','Instansi Pemerintah'];
+  if(n.includes('ekspor')||n.includes('impor')) return ['Ekspor','Impor'];
+  if(n.includes('negara')) return ['Singapura','Malaysia','Tiongkok','Australia','Jepang'];
+  if(n.includes('pelayanan')||n.includes('layanan')) return ['Pelayanan Barang Petikemas','Pelayanan Kapal','Pelayanan Terminal Penumpang','Pelayanan Rupa-rupa'];
+  if(n.includes('cabang')) return ['TPK Merauke [TPK Merauke]','Tanjung Priok [TPK]','Belawan [BICT]','Makassar [MNP]'];
+  return ['Opsi 1','Opsi 2','Opsi 3'];
+}
+const isIdReq=(f)=>f.sumber==='ISIAN'||f.sumber==='PILIHAN';
+const displayKode=(k)=>k.replace(/^([A-Za-z]+)(?=\d)/,'$1.');
+const esc=(s)=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------- Seed data ---------- */
+const SURVEYS = [
+  { id:'katalog', kode:'KATALOG', nama:'Katalog Semua Tipe', periode:2026, jenisNota:'Domestik', status:'draft',
+    deskripsi:'Satu contoh untuk tiap tipe pertanyaan, tipe skala, dan sumber identitas.',
+    catalog:true,
+    identity:[
+      {nama:'No Billing',sumber:'OTOMATIS'},
+      {nama:'Nama Responden',sumber:'ISIAN'},
+      {nama:'Kategori Responden',sumber:'PILIHAN'},
+      {nama:'Tanggal Pengisian',sumber:'SISTEM'},
+    ],
+    questions:[
+      {kode:'G1',parent:null,teks:'Contoh Grup / Bagian',tipe:'GRUP'},
+      {kode:'G1.1',parent:'G1',teks:'Skala kepuasan (anak grup)',tipe:'SKALA_KEPUASAN',scaleId:'scl_puas4'},
+      {kode:'T2',parent:null,teks:'Skala persetujuan (Likert)',tipe:'SKALA_PERSETUJUAN',scaleId:'scl_setuju4'},
+      {kode:'T3',parent:null,teks:'NPS — kemungkinan merekomendasikan',tipe:'NPS',scaleId:'scl_nps'},
+      {kode:'T4',parent:null,teks:'Pertanyaan Ya / Tidak',tipe:'YA_TIDAK'},
+      {kode:'T4.1',parent:'T4',teks:'Teks bersyarat (muncul bila T4 = Ya)',tipe:'TEKS',logic:{src:'T4',val:'Ya'}},
+      {kode:'T5',parent:null,teks:'Pilihan tunggal (radio)',tipe:'PILIHAN_TUNGGAL',options:['Opsi A','Opsi B','Opsi C']},
+      {kode:'T6',parent:null,teks:'Pilihan ganda (checkbox)',tipe:'PILIHAN_GANDA',options:['Opsi 1','Opsi 2','Opsi 3','Opsi 4']},
+      {kode:'T7',parent:null,teks:'Teks isian bebas',tipe:'TEKS'},
+    ],
+  },
+  { id:'srv_01', kode:'SKP-2026', nama:'Survei Kepuasan Pelanggan Domestik 2026', periode:2026, jenisNota:'Domestik', status:'draft',
+    deskripsi:'Survei kepuasan pelanggan domestik tahun 2026.',
+    identity:[
+      {nama:'No Billing',sumber:'OTOMATIS'},{nama:'Nama Cabang',sumber:'OTOMATIS'},{nama:'Nama Entitas Bisnis Pelindo',sumber:'OTOMATIS'},
+      {nama:'Nama Responden',sumber:'ISIAN'},{nama:'Nomor WA/Handphone',sumber:'ISIAN'},{nama:'Nama Perusahaan / Nama Kapal',sumber:'OTOMATIS'},
+      {nama:'Jenis Pelayanan Paling Dominan',sumber:'PILIHAN'},{nama:'Kategori Responden',sumber:'PILIHAN'},
+      {nama:'Tanggal Pengisian',sumber:'SISTEM'},{nama:'Nama Enumerator',sumber:'OTOMATIS'},
+    ],
+    questions:[
+      {kode:'C1',parent:null,teks:'Fasilitas & dimensi layanan',tipe:'GRUP'},
+      {kode:'C1.1',parent:'C1',teks:'Kebersihan & kenyamanan fasilitas terminal',tipe:'SKALA_KEPUASAN',wajib:true,scaleId:'scl_puas4'},
+      {kode:'C1.2',parent:'C1',teks:'Ketersediaan & kejelasan informasi/papan petunjuk',tipe:'SKALA_KEPUASAN',wajib:true,scaleId:'scl_puas4'},
+      {kode:'C1.3',parent:'C1',teks:'Kecepatan proses layanan bongkar muat',tipe:'SKALA_KEPUASAN',wajib:true,scaleId:'scl_puas4'},
+      {kode:'C1.4',parent:'C1',teks:'Keramahan & profesionalisme petugas',tipe:'SKALA_KEPUASAN',wajib:true,scaleId:'scl_puas4'},
+      {kode:'C1.5',parent:'C1',teks:'Keamanan barang & area pelabuhan',tipe:'SKALA_KEPUASAN',wajib:true,scaleId:'scl_puas4'},
+      {kode:'C2',parent:null,teks:'Seberapa besar kemungkinan Anda merekomendasikan Pelindo?',tipe:'NPS',wajib:true,scaleId:'scl_nps'},
+      {kode:'C3',parent:null,teks:'Apakah Anda menggunakan pelabuhan lain?',tipe:'YA_TIDAK',wajib:true},
+      {kode:'C3.1',parent:'C3',teks:'Sebutkan nama pelabuhan tersebut!',tipe:'TEKS',logic:{src:'C3',val:'Ya'}},
+      {kode:'C3.2',parent:'C3',teks:'Tingkat kepuasan terhadap pelabuhan lain tersebut',tipe:'SKALA_KEPUASAN',scaleId:'scl_puas4',logic:{src:'C3',val:'Ya'}},
+      {kode:'C3.3',parent:'C3',teks:'Siapa pengelola pelabuhan tersebut?',tipe:'PILIHAN_TUNGGAL',options:['BUMN','Swasta nasional','Operator asing'],logic:{src:'C3',val:'Ya'}},
+      {kode:'C4',parent:null,teks:'Loyalitas pelanggan',tipe:'GRUP'},
+      {kode:'C4.1',parent:'C4',teks:'Saya akan kembali menggunakan layanan Pelindo',tipe:'SKALA_PERSETUJUAN',wajib:true,scaleId:'scl_setuju4'},
+      {kode:'C4.2',parent:'C4',teks:'Saya bersedia merekomendasikan ke mitra bisnis',tipe:'SKALA_PERSETUJUAN',wajib:true,scaleId:'scl_setuju4'},
+      {kode:'C5',parent:null,teks:'Penerapan SMAP ISO 37001 di lingkungan pelabuhan',tipe:'SKALA_KEPUASAN',wajib:true,scaleId:'scl_puas4'},
+      {kode:'C6',parent:null,teks:'Saran & masukan terhadap layanan Pelindo',tipe:'TEKS'},
+      {kode:'C7',parent:null,teks:'Kendala/pain points yang Anda rasakan (boleh lebih dari satu)',tipe:'PILIHAN_GANDA',options:['Waktu tunggu layanan lama','Biaya layanan tinggi','Informasi kurang jelas','Fasilitas terbatas']},
+    ],
+  },
+  { id:'srv_02', kode:'SKP-2025', nama:'Survei Penumpang Internasional Q3', periode:2025, jenisNota:'Internasional', status:'aktif',
+    deskripsi:'Survei kepuasan layanan terminal internasional, periode Q3 2025.',
+    identity:[
+      {nama:'No Billing',sumber:'OTOMATIS'},{nama:'Nama Kapal / Vessel',sumber:'OTOMATIS'},{nama:'Nama Agen Pelayaran',sumber:'OTOMATIS'},
+      {nama:'Negara Asal / Tujuan',sumber:'PILIHAN'},{nama:'Nama Responden',sumber:'ISIAN'},{nama:'Email Responden',sumber:'ISIAN'},
+      {nama:'Jenis Layanan (Ekspor/Impor)',sumber:'PILIHAN'},{nama:'Tanggal Pengisian',sumber:'SISTEM'},
+    ],
+    questions:[
+      {kode:'C1',parent:null,teks:'Kemudahan & aksesibilitas',tipe:'GRUP'},
+      {kode:'C1.1',parent:'C1',teks:'Kemudahan akses menuju terminal internasional',tipe:'SKALA_KEPUASAN',wajib:true,scaleId:'scl_puas4'},
+      {kode:'C1.2',parent:'C1',teks:'Kejelasan informasi & papan petunjuk berbahasa Inggris',tipe:'SKALA_KEPUASAN',wajib:true,scaleId:'scl_puas4'},
+      {kode:'C1.3',parent:'C1',teks:'Kemudahan proses imigrasi & kepabeanan',tipe:'SKALA_KEPUASAN',wajib:true,scaleId:'scl_puas4'},
+      {kode:'C2',parent:null,teks:'Kualitas layanan',tipe:'GRUP'},
+      {kode:'C2.1',parent:'C2',teks:'Kecepatan layanan dokumen ekspor-impor',tipe:'SKALA_KEPUASAN',wajib:true,scaleId:'scl_puas4'},
+      {kode:'C2.2',parent:'C2',teks:'Profesionalisme & kompetensi petugas',tipe:'SKALA_KEPUASAN',wajib:true,scaleId:'scl_puas4'},
+      {kode:'C2.3',parent:'C2',teks:'Ketersediaan fasilitas penunjang (lounge, mushola, dll.)',tipe:'SKALA_KEPUASAN',scaleId:'scl_puas4'},
+      {kode:'C3',parent:null,teks:'Seberapa besar kemungkinan Anda merekomendasikan terminal internasional Pelindo?',tipe:'NPS',wajib:true,scaleId:'scl_nps'},
+      {kode:'C4',parent:null,teks:'Layanan terminal internasional telah sesuai standar global',tipe:'SKALA_PERSETUJUAN',wajib:true,scaleId:'scl_setuju4'},
+      {kode:'C5',parent:null,teks:'Apakah Anda pernah mengalami keterlambatan layanan?',tipe:'YA_TIDAK',wajib:true},
+      {kode:'C5.1',parent:'C5',teks:'Jelaskan kendala keterlambatan yang Anda alami',tipe:'TEKS',logic:{src:'C5',val:'Ya'}},
+      {kode:'C5.2',parent:'C5',teks:'Berapa lama rata-rata keterlambatan tersebut?',tipe:'PILIHAN_TUNGGAL',options:['Kurang dari 1 jam','1–3 jam','Lebih dari 3 jam'],logic:{src:'C5',val:'Ya'}},
+      {kode:'C6',parent:null,teks:'Aspek yang menurut Anda perlu ditingkatkan (boleh lebih dari satu)',tipe:'PILIHAN_GANDA',options:['Kecepatan layanan','Sistem digital/online','Fasilitas fisik','Komunikasi petugas','Tarif layanan']},
+      {kode:'C7',parent:null,teks:'Saran & masukan untuk peningkatan layanan terminal internasional',tipe:'TEKS'},
+    ],
+  },
+  { id:'srv_03', kode:'SKP-2024', nama:'Survei Layanan SPSL Group - Phase 1', periode:2024, jenisNota:'SPSL Group', status:'selesai',
+    deskripsi:'Evaluasi kepuasan pelanggan B2B atas layanan logistik terintegrasi SPSL Group.',
+    identity:[
+      {nama:'No Kontrak',sumber:'OTOMATIS'},{nama:'Nama Perusahaan',sumber:'OTOMATIS'},{nama:'NPWP Perusahaan',sumber:'OTOMATIS'},
+      {nama:'Nama PIC',sumber:'ISIAN'},{nama:'Nomor WA/Handphone',sumber:'ISIAN'},{nama:'Kategori Layanan',sumber:'PILIHAN'},
+      {nama:'Tanggal Pengisian',sumber:'SISTEM'},
+    ],
+    questions:[
+      {kode:'C1',parent:null,teks:'Operasional & logistik',tipe:'GRUP'},
+      {kode:'C1.1',parent:'C1',teks:'Ketepatan waktu layanan logistik',tipe:'SKALA_KEPUASAN',wajib:true,scaleId:'scl_puas4'},
+      {kode:'C1.2',parent:'C1',teks:'Keandalan sistem pelacakan kargo (tracking)',tipe:'SKALA_KEPUASAN',wajib:true,scaleId:'scl_puas4'},
+      {kode:'C1.3',parent:'C1',teks:'Kondisi & ketersediaan alat angkut/handling',tipe:'SKALA_KEPUASAN',wajib:true,scaleId:'scl_puas4'},
+      {kode:'C2',parent:null,teks:'Administrasi & keuangan',tipe:'GRUP'},
+      {kode:'C2.1',parent:'C2',teks:'Transparansi tarif & komponen biaya layanan',tipe:'SKALA_KEPUASAN',wajib:true,scaleId:'scl_puas4'},
+      {kode:'C2.2',parent:'C2',teks:'Kecepatan proses penagihan/invoice',tipe:'SKALA_KEPUASAN',wajib:true,scaleId:'scl_puas4'},
+      {kode:'C3',parent:null,teks:'Seberapa besar kemungkinan Anda merekomendasikan layanan SPSL Group?',tipe:'NPS',wajib:true,scaleId:'scl_nps'},
+      {kode:'C4',parent:null,teks:'Apakah Anda menggunakan layanan terintegrasi (end-to-end)?',tipe:'YA_TIDAK',wajib:true},
+      {kode:'C4.1',parent:'C4',teks:'Layanan SPSL Group apa yang Anda gunakan?',tipe:'PILIHAN_GANDA',options:['Kepelabuhanan','Pergudangan','Transportasi darat','Freight forwarding','Kepabeanan (bea cukai)'],logic:{src:'C4',val:'Ya'}},
+      {kode:'C5',parent:null,teks:'Layanan SPSL Group meningkatkan efisiensi rantai pasok perusahaan kami',tipe:'SKALA_PERSETUJUAN',wajib:true,scaleId:'scl_setuju4'},
+      {kode:'C6',parent:null,teks:'Frekuensi penggunaan layanan dalam sebulan',tipe:'PILIHAN_TUNGGAL',options:['1–5 kali','6–15 kali','Lebih dari 15 kali']},
+      {kode:'C7',parent:null,teks:'Masukan untuk pengembangan layanan SPSL Group',tipe:'TEKS'},
+    ],
+  },
+  { id:'srv_04', kode:'SKP-2023', nama:'Evaluasi Tahunan Domestik 2023', periode:2023, jenisNota:'Domestik', status:'arsip',
+    deskripsi:'Evaluasi tahunan kepuasan pelanggan domestik 2023 (arsip).',
+    identity:[
+      {nama:'No Billing',sumber:'OTOMATIS'},{nama:'Nama Cabang',sumber:'OTOMATIS'},{nama:'Nama Responden',sumber:'ISIAN'},
+      {nama:'Kategori Responden',sumber:'PILIHAN'},{nama:'Tanggal Pengisian',sumber:'SISTEM'},
+    ],
+    questions:[
+      {kode:'C1',parent:null,teks:'Pelayanan umum',tipe:'GRUP'},
+      {kode:'C1.1',parent:'C1',teks:'Kebersihan & kenyamanan fasilitas pelabuhan',tipe:'SKALA_KEPUASAN',wajib:true,scaleId:'scl_puas4'},
+      {kode:'C1.2',parent:'C1',teks:'Keramahan & kesigapan petugas',tipe:'SKALA_KEPUASAN',wajib:true,scaleId:'scl_puas4'},
+      {kode:'C1.3',parent:'C1',teks:'Kecepatan proses layanan',tipe:'SKALA_KEPUASAN',wajib:true,scaleId:'scl_puas4'},
+      {kode:'C2',parent:null,teks:'Seberapa besar kemungkinan Anda merekomendasikan Pelindo?',tipe:'NPS',wajib:true,scaleId:'scl_nps'},
+      {kode:'C3',parent:null,teks:'Secara keseluruhan saya puas dengan layanan Pelindo',tipe:'SKALA_PERSETUJUAN',wajib:true,scaleId:'scl_setuju4'},
+      {kode:'C4',parent:null,teks:'Apakah Anda berencana menggunakan layanan Pelindo kembali?',tipe:'YA_TIDAK',wajib:true},
+      {kode:'C5',parent:null,teks:'Saran perbaikan untuk tahun berikutnya',tipe:'TEKS'},
+    ],
+  },
+];
+
+/* ---------- State per view ---------- */
+const STATE = {};
+const getState = (id)=> (STATE[id] ||= {answers:{}, identity:{}, errors:{}, submitted:null});
+
+/* ---------- Logika & validasi ---------- */
+function answerVal(a){ if(!a) return undefined; if(a.text!=null&&a.text!=='') return a.text; if(a.number!=null) return String(a.number); if(a.json&&a.json.length) return a.json.join('|'); return undefined; }
+function visible(q,s){ if(!q.logic) return true; const v=answerVal(s.answers[q.logic.src]); return v===q.logic.val; }
+function empty(a){ if(!a) return true; if(a.text!=null) return a.text.trim()===''; if(a.number!=null) return false; if(a.json) return a.json.length===0; return true; }
+
+/* ---------- Render kontrol pertanyaan ---------- */
+function stars(filled,total){ let h=''; for(let i=0;i<total;i++) h+=`<span class="star ${i<filled?'on':''}">★</span>`; return h; }
+
+function control(q,s){
+  const a=s.answers[q.kode];
+  if(q.tipe==='SKALA_KEPUASAN'||q.tipe==='SKALA_PERSETUJUAN'){
+    const sc=SCALES[q.scaleId];
+    return `<div class="opts stars">`+sc.labels.map((l,i)=>
+      `<label class="opt"><input type="radio" name="${q.kode}" data-kode="${q.kode}" data-kind="num" value="${i+1}" ${a&&a.number===i+1?'checked':''}>
+        <span class="optbody"><span class="stars">${stars(i+1,sc.poin)}</span><span class="optlbl">${esc(l)}</span></span></label>`).join('')+`</div>`;
+  }
+  if(q.tipe==='NPS'){
+    const sc=SCALES[q.scaleId];
+    return `<div><div class="nps">`+sc.labels.map(l=>{const num=Number(l);
+      return `<label class="npschip ${a&&a.number===num?'sel':''}"><input type="radio" name="${q.kode}" data-kode="${q.kode}" data-kind="num" value="${num}" ${a&&a.number===num?'checked':''} hidden>${l}</label>`;}).join('')+
+      `</div><div class="npsends"><span>${esc(sc.endpointKiri||'')}</span><span>${esc(sc.endpointKanan||'')}</span></div></div>`;
+  }
+  if(q.tipe==='YA_TIDAK'){
+    return `<div class="opts" style="flex-direction:row;gap:24px">`+['Ya','Tidak'].map(o=>
+      `<label class="opt inline"><input type="radio" name="${q.kode}" data-kode="${q.kode}" data-kind="text" value="${o}" ${a&&a.text===o?'checked':''}>${o}</label>`).join('')+`</div>`;
+  }
+  if(q.tipe==='PILIHAN_TUNGGAL'){
+    return `<div class="opts">`+q.options.map(o=>
+      `<label class="opt inline"><input type="radio" name="${q.kode}" data-kode="${q.kode}" data-kind="text" value="${esc(o)}" ${a&&a.text===o?'checked':''}>${esc(o)}</label>`).join('')+`</div>`;
+  }
+  if(q.tipe==='PILIHAN_GANDA'){
+    const sel=(a&&a.json)||[];
+    return `<div class="opts">`+q.options.map(o=>
+      `<label class="opt inline"><input type="checkbox" data-kode="${q.kode}" data-kind="multi" value="${esc(o)}" ${sel.includes(o)?'checked':''}>${esc(o)}</label>`).join('')+`</div>`;
+  }
+  if(q.tipe==='TEKS'){
+    return `<textarea class="input ${s.errors[q.kode]?'err':''}" data-kode="${q.kode}" data-kind="text" placeholder="Input Jawaban">${esc((a&&a.text)||'')}</textarea>`;
+  }
+  return '';
+}
+
+function qnode(node,s){
+  const q=node.q;
+  if(!visible(q,s)) return '';
+  if(q.tipe==='GRUP'){
+    return `<div class="grp"><div class="grphead"><span class="qk" style="color:var(--text2);font-weight:600">${displayKode(q.kode)}</span> ${esc(q.teks)}</div>
+      <div class="grpkids">${node.children.map(c=>qnode(c,s)).join('')}</div></div>`;
+  }
+  const dep = q.logic? `<span class="deps">muncul bila ${displayKode(q.logic.src)} = ${esc(q.logic.val)}</span>`:'';
+  const err = s.errors[q.kode]? `<div class="errtext">Wajib diisi</div>`:'';
+  return `<div class="qnode" data-q="${q.kode}">
+    <div class="qtext"><span class="qk">${displayKode(q.kode)}</span>${esc(q.teks)}${q.wajib?'<span class="req">*</span>':''}${dep}</div>
+    ${control(q,s)}${err}</div>`;
+}
+
+function buildTree(qs){
+  const byParent={};
+  qs.forEach(q=>{const k=q.parent||''; (byParent[k]=byParent[k]||[]).push(q);});
+  const rec=(p)=> (byParent[p||'']||[]).map(q=>({q,children:rec(q.kode)}));
+  return rec(null);
+}
+
+/* ---------- Render identitas ---------- */
+function idHtml(f,i,s){
+  const req=isIdReq(f)?'<span class="req">*</span>':'';
+  let ctrl;
+  if(f.sumber==='OTOMATIS'||f.sumber==='SISTEM'){
+    const bill=/billing/i.test(f.nama);
+    ctrl=`<div class="billrow"><input class="input ro" readonly value="${esc(autoValue(f))}">${bill?'<button class="btn-primary" type="button" data-bill="1">Preview</button>':''}</div>`;
+  } else if(f.sumber==='PILIHAN'){
+    const v=s.identity[i]||'';
+    ctrl=`<select class="input ${s.errors['id_'+i]?'err':''}" data-id="${i}"><option value="">Pilih...</option>`+
+      choiceOptions(f).map(o=>`<option ${v===o?'selected':''}>${esc(o)}</option>`).join('')+`</select>`;
+  } else {
+    ctrl=`<input class="input ${s.errors['id_'+i]?'err':''}" data-id="${i}" placeholder="${esc(f.nama)}" value="${esc(s.identity[i]||'')}">`;
+  }
+  const err = s.errors['id_'+i]?'<div class="errtext">Wajib diisi</div>':'';
+  return `<div class="idrow"><label class="flbl">${esc(f.nama)}${req}</label>${ctrl}${err}</div>`;
+}
+
+/* ---------- Render form ---------- */
+function render(sv){
+  const s=getState(sv.id);
+  const view=document.getElementById('view');
+  const head = sv.catalog
+    ? `<div class="formhead"><h2 class="title">Katalog Tipe</h2></div><p class="catnote">Satu contoh interaktif untuk tiap tipe pertanyaan, skala, dan sumber identitas.</p>`
+    : `<div class="formhead"><h2 class="title">${esc(sv.nama)}</h2><span class="kode">${sv.kode}</span><span class="badge ${sv.status}">${sv.status}</span><span class="nota">${esc(sv.jenisNota)}</span></div>`;
+  const petunjuk = sv.catalog ? '' : `
+    <section class="blk"><h2 class="sec">A. Petunjuk</h2>
+      <p class="lead">Pelanggan PT Pelabuhan Indonesia (Persero) yang terhormat,</p>
+      <p class="lead">Terima kasih Anda telah meluangkan waktu untuk berpartisipasi dalam <b>${esc(sv.nama)}</b> tahun ${sv.periode}. Kami mohon kesediaan Anda untuk mengisi kuesioner ini dengan lengkap, jujur, dan apa adanya. Sebelum mengklik tombol submit, kami mohon Anda memeriksa kembali seluruh jawaban telah dijawab dengan lengkap.</p>
+      <p class="lead muted">${esc(sv.deskripsi)}</p>
+    </section><hr>`;
+  view.innerHTML = `<div class="formcard">
+    ${head}
+    ${petunjuk}
+    <section class="blk"><h2 class="sec">B. Identitas</h2>${sv.identity.map((f,i)=>idHtml(f,i,s)).join('')}</section>
+    <hr>
+    <section class="blk"><h2 class="sec">C. Pertanyaan${sv.catalog?'':' Umum'}</h2>
+      <div class="qlist" id="qlist">${buildTree(sv.questions).map(n=>qnode(n,s)).join('')}</div></section>
+    <div class="actions"><button class="btn-ghost" id="resetBtn" type="button">Reset</button>
+      <button class="btn-primary" id="submitBtn" type="button">Submit</button></div>
+    <div id="summary">${s.submitted?summaryHtml(s.submitted):''}</div>
+  </div>`;
+  wire(sv);
+}
+
+function rerenderQuestions(sv){
+  const s=getState(sv.id);
+  document.getElementById('qlist').innerHTML = buildTree(sv.questions).map(n=>qnode(n,s)).join('');
+}
+
+function wire(sv){
+  const s=getState(sv.id);
+  const card=document.querySelector('.formcard');
+  card.addEventListener('change',(e)=>{
+    const el=e.target;
+    if(el.dataset.id!=null){ s.identity[el.dataset.id]=el.value; delete s.errors['id_'+el.dataset.id]; return; }
+    const kode=el.dataset.kode; if(!kode||el.dataset.kind==='text') return;
+    if(el.dataset.kind==='multi'){
+      let arr=(s.answers[kode]&&s.answers[kode].json)?[...s.answers[kode].json]:[];
+      if(el.checked) arr.push(el.value); else arr=arr.filter(x=>x!==el.value);
+      s.answers[kode]={json:arr};
+    } else if(el.dataset.kind==='num'){ s.answers[kode]={number:Number(el.value)}; }
+    delete s.errors[kode];
+    rerenderQuestions(sv);
+  });
+  card.addEventListener('input',(e)=>{
+    const el=e.target;
+    if(el.dataset.id!=null){ s.identity[el.dataset.id]=el.value; return; }
+    if(el.dataset.kode&&el.dataset.kind==='text'){ s.answers[el.dataset.kode]={text:el.value}; }
+  });
+  card.addEventListener('click',(e)=>{
+    if(e.target.dataset.bill){ alert('Pratinjau nota tagihan (simulasi).'); }
+  });
+  document.getElementById('resetBtn').onclick=()=>{ s.answers={}; s.identity={}; s.errors={}; s.submitted=null; render(sv); };
+  document.getElementById('submitBtn').onclick=()=>submit(sv);
+}
+
+function submit(sv){
+  const s=getState(sv.id); s.errors={};
+  sv.identity.forEach((f,i)=>{ if(isIdReq(f) && !((s.identity[i]||'').trim())) s.errors['id_'+i]=1; });
+  const vis=sv.questions.filter(q=>visible(q,s));
+  vis.forEach(q=>{ if(q.tipe==='GRUP'||!q.wajib) return; if(empty(s.answers[q.kode])) s.errors[q.kode]=1; });
+  const n=Object.keys(s.errors).length;
+  if(n){ s.submitted=null; render(sv);
+    document.getElementById('summary').innerHTML=`<div class="warnbar">Masih ada ${n} isian wajib yang kosong.</div>`;
+    const first=document.querySelector('.input.err,[data-q] .errtext'); if(first) first.scrollIntoView({behavior:'smooth',block:'center'});
+    return; }
+  s.submitted={
+    surveyId:sv.id, submittedAt:'2026-06-20T03:00:00.000Z',
+    identitas: sv.identity.map((f,i)=>({nama:f.nama,sumber:f.sumber,nilai:(f.sumber==='OTOMATIS'||f.sumber==='SISTEM')?autoValue(f):(s.identity[i]||'')})),
+    jawaban: vis.filter(q=>q.tipe!=='GRUP'&&!empty(s.answers[q.kode])).map(q=>{const a=s.answers[q.kode];return {kode:q.kode,teks:q.teks,valueText:a.text,valueNumber:a.number,valueJson:a.json};}),
+  };
+  render(sv);
+  document.getElementById('summary').scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+function fmtAns(a){ if(a.valueJson) return a.valueJson.join(', '); if(a.valueNumber!=null) return String(a.valueNumber); return a.valueText||'—'; }
+function summaryHtml(p){
+  return `<div class="okbar">✓ Simulasi berhasil — tidak ada data tersimpan.</div>
+  <div class="sumbox">
+    <p class="sumh">Identitas</p><dl>${p.identitas.map(it=>`<div class="sumrow"><dt>${esc(it.nama)}</dt><dd>${esc(it.nilai||'—')}</dd></div>`).join('')}</dl>
+    <p class="sumh" style="margin-top:14px">Jawaban (${p.jawaban.length})</p>
+    <ul style="list-style:none;padding:0;margin:0">${p.jawaban.map(a=>`<li class="sumli"><span class="k">${a.kode}</span>${esc(fmtAns(a))}</li>`).join('')}</ul>
+    <details style="margin-top:12px"><summary>Lihat payload (responses/answers)</summary><pre>${esc(JSON.stringify(p,null,2))}</pre></details>
+  </div>`;
+}
+
+/* ---------- Tabs ---------- */
+let current=SURVEYS[0].id;
+function renderTabs(){
+  document.getElementById('tabs').innerHTML = SURVEYS.map(sv=>
+    `<button class="tab ${sv.id===current?'active':''}" data-tab="${sv.id}">${sv.catalog?'Katalog Tipe':esc(sv.kode)}</button>`).join('');
+  document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{ current=b.dataset.tab; renderTabs(); render(SURVEYS.find(x=>x.id===current)); window.scrollTo({top:0,behavior:'smooth'}); });
+}
+renderTabs();
+render(SURVEYS[0]);
+</script>

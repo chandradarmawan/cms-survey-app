@@ -25,6 +25,12 @@ export function AppShell() {
       active: path === '/surveys' || path.startsWith('/surveys/'),
     },
     {
+      key: 'results',
+      label: ui.tabs.results,
+      href: '/hasil',
+      active: path.startsWith('/hasil'),
+    },
+    {
       key: 'masterData',
       label: ui.tabs.masterData,
       href: '/master-data',

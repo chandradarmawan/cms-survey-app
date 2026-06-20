@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Icon } from '@/components/Icon';
 import { ScalePreview } from '@/components/ScalePreview';
+import { ScaleTypeBadge } from '@/components/ScaleTypeBadge';
 import { Toast } from '@/components/Toast';
 import { useSurveyStore } from '@/store/useSurveyStore';
 import { deleteScale } from '@/data/scales';
@@ -47,9 +48,12 @@ export function ScalesPage() {
             <div key={scale.id} className="card p-6">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-body-lg font-medium">{scale.nama}</p>
-                  <p className="text-body-sm text-text-secondary">
-                    {scale.tipe} · {scale.poin} poin · dipakai {usage} pertanyaan
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-body-lg font-medium">{scale.nama}</p>
+                    <ScaleTypeBadge tipe={scale.tipe} />
+                  </div>
+                  <p className="mt-0.5 text-body-sm text-text-secondary">
+                    {scale.poin} poin · dipakai {usage} pertanyaan
                   </p>
                 </div>
                 {confirmId === scale.id ? (

@@ -94,6 +94,93 @@ export interface IdentityField {
   urutan: number;
 }
 
+// ---- Transaksi: distribusi, responden & jawaban (docs/DATABASE.md §6) ----
+export type InvitationChannel = 'QR' | 'EMAIL';
+export type InvitationStatus = 'dibuat' | 'terkirim' | 'dibuka' | 'selesai' | 'kedaluwarsa';
+
+/** Cermin "list transaksi" Pelindo — anchor identitas OTOMATIS & kunci anti-duplikat. */
+export interface Transaction {
+  id: string;
+  noBilling: string;
+  jenisNota: JenisNota;
+  namaCabang?: string;
+  namaEntitas?: string;
+  namaPerusahaan?: string; // / nama kapal
+  email?: string;
+  attrs?: Record<string, string>; // field OTOMATIS lain yang fleksibel
+  tanggalTransaksi?: string; // ISO date
+}
+
+/** Link ber-token per (survei × transaksi). Kanal diturunkan dari jenis nota. */
+export interface SurveyInvitation {
+  id: string;
+  surveyId: string;
+  transactionId: string;
+  token: string; // dipakai di URL /isi/:token
+  channel: InvitationChannel;
+  status: InvitationStatus;
+  sentAt?: string;
+  openedAt?: string;
+  createdAt: string;
+}
+
+/** Satu jawaban — SNAPSHOT pertanyaan saat submit + nilai + skor (lepas dari master). */
+export interface ResponseAnswer {
+  questionKode: string; // "C1.1" (stabil walau master berubah)
+  sourceQuestionId?: string; // provenance
+  teks: string;
+  tipe: QuestionType;
+  scale?: ScaleSnapshot; // snapshot skala (SKALA_*, NPS)
+  options?: QuestionOption[]; // snapshot opsi (PILIHAN_*)
+  valueText?: string; // TEKS / YA_TIDAK / PILIHAN_TUNGGAL (label)
+  valueNumber?: number; // SKALA (poin) / NPS (0..10)
+  valueOptions?: string[]; // PILIHAN_GANDA (label terpilih)
+  skor?: number; // skor mentah (poin skala / option.skor)
+  skorNormal?: number; // 0..1 untuk CSI
+  bobot?: number; // bobot pertanyaan saat submit (default 1)
+}
+
+/** Snapshot nilai field identitas per response (untuk filter dashboard). */
+export interface ResponseIdentity {
+  nama: string;
+  sumber: IdentitySource;
+  nilai: string;
+  urutan: number;
+}
+
+/** Satu submission responden (sekali submit). answers & identity di-embed. */
+export interface SurveyResponse {
+  id: string;
+  invitationId: string;
+  surveyId: string;
+  transactionId: string;
+  submittedAt: string;
+  channel: InvitationChannel;
+  npsValue?: number; // nilai NPS 0..10 response ini, bila ada
+  csi?: number; // indeks kepuasan response ini (0..100)
+  answers: ResponseAnswer[];
+  identity: ResponseIdentity[];
+}
+
+/** Payload submit dari form responden (kompatibel dgn SerializedResponse modul preview). */
+export interface ResponseSubmission {
+  submittedAt?: string;
+  identitas: Array<Pick<ResponseIdentity, 'nama' | 'sumber' | 'nilai'>>;
+  jawaban: Array<{
+    kode: string;
+    teks: string;
+    valueText?: string;
+    valueNumber?: number;
+    valueJson?: string[];
+  }>;
+}
+
+export interface SubmitResult {
+  ok: boolean;
+  error?: string;
+  response?: SurveyResponse;
+}
+
 // ---- Turunan / view-model ----
 export interface SurveySummary {
   total: number;
