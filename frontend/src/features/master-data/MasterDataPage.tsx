@@ -1,10 +1,10 @@
-// Master data (PRD §8.6) — stub + lookup menyusul.
+// Master data → Lookup identitas (PRD §8.6) — stub, menyusul.
 import { StubPage } from '@/components/StubPage';
 
 export function MasterDataPage() {
   return (
     <StubPage
-      title="Master data"
+      title="Lookup identitas"
       milestone="Milestone M6"
       icon="database"
       desc="Lookup untuk field identitas (Jenis Pelayanan, Kategori Responden, dll.) yang dipakai sumber data OTOMATIS/PILIHAN."

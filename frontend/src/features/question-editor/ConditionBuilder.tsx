@@ -2,7 +2,7 @@
 // Operator: sama_dengan | tidak_sama_dengan. Relasi antar-kondisi = AND.
 import { Icon } from '@/components/Icon';
 import { useSurveyStore } from '@/store/useSurveyStore';
-import type { Condition, LogicOperator, Question, Scale } from '@/types';
+import type { Condition, LogicOperator, Question } from '@/types';
 
 const OPERATORS: Array<{ value: LogicOperator; label: string }> = [
   { value: 'sama_dengan', label: 'sama dengan' },
@@ -20,10 +20,7 @@ interface ValueOption {
  * Mengembalikan daftar opsi terbatas (dropdown) untuk semua tipe ber-pilihan/skala;
  * null hanya untuk TEKS (input bebas, tak ada nilai enumerable).
  */
-function valueOptions(
-  source: Question | undefined,
-  scales: Scale[],
-): ValueOption[] | null {
+function valueOptions(source: Question | undefined): ValueOption[] | null {
   if (!source) return null;
 
   if (source.tipe === 'YA_TIDAK')
@@ -40,7 +37,8 @@ function valueOptions(
     source.tipe === 'SKALA_PERSETUJUAN' ||
     source.tipe === 'NPS'
   ) {
-    const scale = scales.find((s) => s.id === source.scaleId);
+    // Baca snapshot skala yang ditanam di pertanyaan sumber (bukan katalog master).
+    const scale = source.scale;
     if (!scale) return null;
     const last = scale.labels.length - 1;
     return scale.labels.map((label, idx) => {
@@ -70,7 +68,6 @@ export function ConditionBuilder({
   onChange,
 }: ConditionBuilderProps) {
   const questions = useSurveyStore((s) => s.questions);
-  const scales = useSurveyStore((s) => s.scales);
 
   // Kandidat sumber: pertanyaan non-grup di survei ini, selain dirinya sendiri.
   const sources = questions.filter(
@@ -99,7 +96,7 @@ export function ConditionBuilder({
 
       {conditions.map((c, i) => {
         const source = byKode(c.sourceQuestionKode);
-        const values = valueOptions(source, scales);
+        const values = valueOptions(source);
         // Pertahankan nilai lama yang tak lagi ada di daftar agar tidak hilang diam-diam.
         const hasCurrent =
           !c.value || (values?.some((v) => v.value === c.value) ?? true);

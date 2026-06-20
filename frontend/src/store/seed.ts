@@ -1,7 +1,11 @@
-// Data awal in-memory ("database" klien). Lihat docs/PRD.md §12.
-import type { IdentityField, Question, Scale, Survey } from "@/types";
+// Data awal in-memory ("database" klien). Lihat docs/PRD.md §12 & docs/DATABASE.md.
+// Bentuk data mengikuti rancangan DB compact: tiap array = satu tabel; options/logic/labels
+// tersimpan apa adanya (kolom JSONB). jumlahPertanyaan & childCount DITURUNKAN di bawah
+// (cermin DATABASE.md §5) agar count selalu konsisten dengan data — bukan di-hardcode.
+import type { IdentityField, Question, Scale, ScaleSnapshot, Survey } from "@/types";
+import { scaleSnapshot } from "@/lib/questionMeta";
 
-// ---- §12.4 Scales ----
+// ---- §12.4 Scales (global, dipakai lintas survei) ----
 export const seedScales: Scale[] = [
   {
     id: "scl_puas4",
@@ -28,7 +32,16 @@ export const seedScales: Scale[] = [
   },
 ];
 
-// ---- §12.1 Surveys ----
+// Helper seed: bangun field skala question (snapshot + provenance) dari id master.
+// Cermin pola "snapshot di question" pada DATABASE.md §2.4 — question lepas dari master.
+const scaleById: Record<string, Scale> = Object.fromEntries(
+  seedScales.map((s) => [s.id, s]),
+);
+function snap(scaleId: string): { sourceScaleId: string; scale: ScaleSnapshot } {
+  return { sourceScaleId: scaleId, scale: scaleSnapshot(scaleById[scaleId]) };
+}
+
+// ---- §12.1 Surveys (jumlahPertanyaan diturunkan otomatis — lihat finalize di bawah) ----
 export const seedSurveys: Survey[] = [
   {
     id: "srv_01",
@@ -40,7 +53,7 @@ export const seedSurveys: Survey[] = [
     tanggalMulai: "2026-07-01",
     tanggalSelesai: "2026-09-30",
     deskripsi: "Survei kepuasan pelanggan domestik tahun 2026.",
-    jumlahPertanyaan: 14,
+    jumlahPertanyaan: 0,
     jumlahResponden: 0,
     terakhirDiubah: "2026-06-18T09:30:00",
     createdAt: "2026-06-01T08:00:00",
@@ -54,7 +67,9 @@ export const seedSurveys: Survey[] = [
     status: "aktif",
     tanggalMulai: "2025-07-01",
     tanggalSelesai: "2025-09-30",
-    jumlahPertanyaan: 22,
+    deskripsi:
+      "Survei kepuasan layanan terminal internasional, periode Q3 2025.",
+    jumlahPertanyaan: 0,
     jumlahResponden: 1248,
     terakhirDiubah: "2026-06-12T14:05:00",
     createdAt: "2025-06-10T08:00:00",
@@ -68,7 +83,9 @@ export const seedSurveys: Survey[] = [
     status: "selesai",
     tanggalMulai: "2024-04-01",
     tanggalSelesai: "2024-06-30",
-    jumlahPertanyaan: 20,
+    deskripsi:
+      "Evaluasi kepuasan pelanggan B2B atas layanan logistik terintegrasi SPSL Group.",
+    jumlahPertanyaan: 0,
     jumlahResponden: 3910,
     terakhirDiubah: "2024-12-31T16:00:00",
     createdAt: "2024-03-01T08:00:00",
@@ -82,16 +99,19 @@ export const seedSurveys: Survey[] = [
     status: "arsip",
     tanggalMulai: "2023-07-01",
     tanggalSelesai: "2023-09-30",
-    jumlahPertanyaan: 20,
-    jumlahResponden: 0,
+    deskripsi: "Evaluasi tahunan kepuasan pelanggan domestik 2023 (arsip).",
+    jumlahPertanyaan: 0,
+    jumlahResponden: 2150,
     terakhirDiubah: "2023-12-20T08:00:00",
     createdAt: "2023-06-01T08:00:00",
   },
 ];
 
-// ---- §12.2 Questions (hanya SKP-2026 / srv_01 yang punya tree lengkap) ----
-export const seedQuestions: Question[] = [
-  // C1 — GRUP (5 anak)
+// ---- §12.2 Questions ----
+
+// SKP-2026 (srv_01) — Domestik, draft
+const srv01Questions: Question[] = [
+  // C1 — GRUP: Fasilitas & dimensi layanan
   {
     id: "q_c1",
     surveyId: "srv_01",
@@ -102,7 +122,6 @@ export const seedQuestions: Question[] = [
     urutan: 1,
     wajibDiisi: false,
     isGroup: true,
-    childCount: 5,
   },
   {
     id: "q_c1_1",
@@ -114,7 +133,7 @@ export const seedQuestions: Question[] = [
     urutan: 1,
     wajibDiisi: true,
     isGroup: false,
-    scaleId: "scl_puas4",
+    ...snap("scl_puas4"),
   },
   {
     id: "q_c1_2",
@@ -126,7 +145,7 @@ export const seedQuestions: Question[] = [
     urutan: 2,
     wajibDiisi: true,
     isGroup: false,
-    scaleId: "scl_puas4",
+    ...snap("scl_puas4"),
   },
   {
     id: "q_c1_3",
@@ -138,7 +157,7 @@ export const seedQuestions: Question[] = [
     urutan: 3,
     wajibDiisi: true,
     isGroup: false,
-    scaleId: "scl_puas4",
+    ...snap("scl_puas4"),
   },
   {
     id: "q_c1_4",
@@ -150,7 +169,7 @@ export const seedQuestions: Question[] = [
     urutan: 4,
     wajibDiisi: true,
     isGroup: false,
-    scaleId: "scl_puas4",
+    ...snap("scl_puas4"),
   },
   {
     id: "q_c1_5",
@@ -162,7 +181,7 @@ export const seedQuestions: Question[] = [
     urutan: 5,
     wajibDiisi: true,
     isGroup: false,
-    scaleId: "scl_puas4",
+    ...snap("scl_puas4"),
   },
 
   // C2 — NPS
@@ -176,10 +195,10 @@ export const seedQuestions: Question[] = [
     urutan: 2,
     wajibDiisi: true,
     isGroup: false,
-    scaleId: "scl_nps",
+    ...snap("scl_nps"),
   },
 
-  // C3 — YA_TIDAK (+ 3 anak)
+  // C3 — YA_TIDAK + 3 anak bersyarat (tampil hanya bila C3 = "Ya")
   {
     id: "q_c3",
     surveyId: "srv_01",
@@ -217,7 +236,12 @@ export const seedQuestions: Question[] = [
     urutan: 2,
     wajibDiisi: false,
     isGroup: false,
-    scaleId: "scl_puas4",
+    ...snap("scl_puas4"),
+    logic: {
+      conditions: [
+        { sourceQuestionKode: "C3", operator: "sama_dengan", value: "Ya" },
+      ],
+    },
   },
   {
     id: "q_c3_3",
@@ -230,6 +254,11 @@ export const seedQuestions: Question[] = [
     wajibDiisi: false,
     isGroup: false,
     acakOpsi: false,
+    logic: {
+      conditions: [
+        { sourceQuestionKode: "C3", operator: "sama_dengan", value: "Ya" },
+      ],
+    },
     options: [
       { id: "opt_c3_3_a", label: "BUMN", skor: 3, urutan: 1 },
       { id: "opt_c3_3_b", label: "Swasta nasional", skor: 2, urutan: 2 },
@@ -237,7 +266,7 @@ export const seedQuestions: Question[] = [
     ],
   },
 
-  // C4 — GRUP (2 anak)
+  // C4 — GRUP: Loyalitas pelanggan
   {
     id: "q_c4",
     surveyId: "srv_01",
@@ -248,7 +277,6 @@ export const seedQuestions: Question[] = [
     urutan: 4,
     wajibDiisi: false,
     isGroup: true,
-    childCount: 2,
   },
   {
     id: "q_c4_1",
@@ -260,7 +288,7 @@ export const seedQuestions: Question[] = [
     urutan: 1,
     wajibDiisi: true,
     isGroup: false,
-    scaleId: "scl_setuju4",
+    ...snap("scl_setuju4"),
   },
   {
     id: "q_c4_2",
@@ -272,7 +300,7 @@ export const seedQuestions: Question[] = [
     urutan: 2,
     wajibDiisi: true,
     isGroup: false,
-    scaleId: "scl_setuju4",
+    ...snap("scl_setuju4"),
   },
 
   // C5 — SKALA_KEPUASAN
@@ -286,7 +314,20 @@ export const seedQuestions: Question[] = [
     urutan: 5,
     wajibDiisi: true,
     isGroup: false,
-    scaleId: "scl_puas4",
+    ...snap("scl_puas4"),
+  },
+
+  // C6 — TEKS (saran)
+  {
+    id: "q_c6",
+    surveyId: "srv_01",
+    kode: "C6",
+    parentId: null,
+    teks: "Saran & masukan terhadap layanan Pelindo",
+    tipe: "TEKS",
+    urutan: 6,
+    wajibDiisi: false,
+    isGroup: false,
   },
 
   // C7 — PILIHAN_GANDA
@@ -297,7 +338,7 @@ export const seedQuestions: Question[] = [
     parentId: null,
     teks: "Kendala/pain points yang Anda rasakan (boleh lebih dari satu)",
     tipe: "PILIHAN_GANDA",
-    urutan: 6,
+    urutan: 7,
     wajibDiisi: false,
     isGroup: false,
     options: [
@@ -309,10 +350,508 @@ export const seedQuestions: Question[] = [
   },
 ];
 
-// ---- §12.3 Identity fields (grup "Identitas", untuk srv_01) ----
-const identitySpec: Array<
-  Pick<IdentityField, "nama" | "sumber" | "deskripsi">
-> = [
+// SKP-2025 (srv_02) — Internasional, aktif
+const srv02Questions: Question[] = [
+  {
+    id: "q2_c1",
+    surveyId: "srv_02",
+    kode: "C1",
+    parentId: null,
+    teks: "Kemudahan & aksesibilitas",
+    tipe: "GRUP",
+    urutan: 1,
+    wajibDiisi: false,
+    isGroup: true,
+  },
+  {
+    id: "q2_c1_1",
+    surveyId: "srv_02",
+    kode: "C1.1",
+    parentId: "q2_c1",
+    teks: "Kemudahan akses menuju terminal internasional",
+    tipe: "SKALA_KEPUASAN",
+    urutan: 1,
+    wajibDiisi: true,
+    isGroup: false,
+    ...snap("scl_puas4"),
+  },
+  {
+    id: "q2_c1_2",
+    surveyId: "srv_02",
+    kode: "C1.2",
+    parentId: "q2_c1",
+    teks: "Kejelasan informasi & papan petunjuk berbahasa Inggris",
+    tipe: "SKALA_KEPUASAN",
+    urutan: 2,
+    wajibDiisi: true,
+    isGroup: false,
+    ...snap("scl_puas4"),
+  },
+  {
+    id: "q2_c1_3",
+    surveyId: "srv_02",
+    kode: "C1.3",
+    parentId: "q2_c1",
+    teks: "Kemudahan proses imigrasi & kepabeanan",
+    tipe: "SKALA_KEPUASAN",
+    urutan: 3,
+    wajibDiisi: true,
+    isGroup: false,
+    ...snap("scl_puas4"),
+  },
+
+  {
+    id: "q2_c2",
+    surveyId: "srv_02",
+    kode: "C2",
+    parentId: null,
+    teks: "Kualitas layanan",
+    tipe: "GRUP",
+    urutan: 2,
+    wajibDiisi: false,
+    isGroup: true,
+  },
+  {
+    id: "q2_c2_1",
+    surveyId: "srv_02",
+    kode: "C2.1",
+    parentId: "q2_c2",
+    teks: "Kecepatan layanan dokumen ekspor-impor",
+    tipe: "SKALA_KEPUASAN",
+    urutan: 1,
+    wajibDiisi: true,
+    isGroup: false,
+    ...snap("scl_puas4"),
+  },
+  {
+    id: "q2_c2_2",
+    surveyId: "srv_02",
+    kode: "C2.2",
+    parentId: "q2_c2",
+    teks: "Profesionalisme & kompetensi petugas",
+    tipe: "SKALA_KEPUASAN",
+    urutan: 2,
+    wajibDiisi: true,
+    isGroup: false,
+    ...snap("scl_puas4"),
+  },
+  {
+    id: "q2_c2_3",
+    surveyId: "srv_02",
+    kode: "C2.3",
+    parentId: "q2_c2",
+    teks: "Ketersediaan fasilitas penunjang (lounge, mushola, dll.)",
+    tipe: "SKALA_KEPUASAN",
+    urutan: 3,
+    wajibDiisi: false,
+    isGroup: false,
+    ...snap("scl_puas4"),
+  },
+
+  {
+    id: "q2_c3",
+    surveyId: "srv_02",
+    kode: "C3",
+    parentId: null,
+    teks: "Seberapa besar kemungkinan Anda merekomendasikan terminal internasional Pelindo?",
+    tipe: "NPS",
+    urutan: 3,
+    wajibDiisi: true,
+    isGroup: false,
+    ...snap("scl_nps"),
+  },
+  {
+    id: "q2_c4",
+    surveyId: "srv_02",
+    kode: "C4",
+    parentId: null,
+    teks: "Layanan terminal internasional telah sesuai standar global",
+    tipe: "SKALA_PERSETUJUAN",
+    urutan: 4,
+    wajibDiisi: true,
+    isGroup: false,
+    ...snap("scl_setuju4"),
+  },
+
+  {
+    id: "q2_c5",
+    surveyId: "srv_02",
+    kode: "C5",
+    parentId: null,
+    teks: "Apakah Anda pernah mengalami keterlambatan layanan?",
+    tipe: "YA_TIDAK",
+    urutan: 5,
+    wajibDiisi: true,
+    isGroup: false,
+  },
+  {
+    id: "q2_c5_1",
+    surveyId: "srv_02",
+    kode: "C5.1",
+    parentId: "q2_c5",
+    teks: "Jelaskan kendala keterlambatan yang Anda alami",
+    tipe: "TEKS",
+    urutan: 1,
+    wajibDiisi: false,
+    isGroup: false,
+    logic: {
+      conditions: [
+        { sourceQuestionKode: "C5", operator: "sama_dengan", value: "Ya" },
+      ],
+    },
+  },
+  {
+    id: "q2_c5_2",
+    surveyId: "srv_02",
+    kode: "C5.2",
+    parentId: "q2_c5",
+    teks: "Berapa lama rata-rata keterlambatan tersebut?",
+    tipe: "PILIHAN_TUNGGAL",
+    urutan: 2,
+    wajibDiisi: false,
+    isGroup: false,
+    acakOpsi: false,
+    logic: {
+      conditions: [
+        { sourceQuestionKode: "C5", operator: "sama_dengan", value: "Ya" },
+      ],
+    },
+    options: [
+      { id: "opt_q2_c5_2_a", label: "Kurang dari 1 jam", skor: 3, urutan: 1 },
+      { id: "opt_q2_c5_2_b", label: "1–3 jam", skor: 2, urutan: 2 },
+      { id: "opt_q2_c5_2_c", label: "Lebih dari 3 jam", skor: 1, urutan: 3 },
+    ],
+  },
+
+  {
+    id: "q2_c6",
+    surveyId: "srv_02",
+    kode: "C6",
+    parentId: null,
+    teks: "Aspek yang menurut Anda perlu ditingkatkan (boleh lebih dari satu)",
+    tipe: "PILIHAN_GANDA",
+    urutan: 6,
+    wajibDiisi: false,
+    isGroup: false,
+    options: [
+      { id: "opt_q2_c6_a", label: "Kecepatan layanan", urutan: 1 },
+      { id: "opt_q2_c6_b", label: "Sistem digital/online", urutan: 2 },
+      { id: "opt_q2_c6_c", label: "Fasilitas fisik", urutan: 3 },
+      { id: "opt_q2_c6_d", label: "Komunikasi petugas", urutan: 4 },
+      { id: "opt_q2_c6_e", label: "Tarif layanan", urutan: 5 },
+    ],
+  },
+  {
+    id: "q2_c7",
+    surveyId: "srv_02",
+    kode: "C7",
+    parentId: null,
+    teks: "Saran & masukan untuk peningkatan layanan terminal internasional",
+    tipe: "TEKS",
+    urutan: 7,
+    wajibDiisi: false,
+    isGroup: false,
+  },
+];
+
+// SKP-2024 (srv_03) — SPSL Group (B2B logistik), selesai
+const srv03Questions: Question[] = [
+  {
+    id: "q3_c1",
+    surveyId: "srv_03",
+    kode: "C1",
+    parentId: null,
+    teks: "Operasional & logistik",
+    tipe: "GRUP",
+    urutan: 1,
+    wajibDiisi: false,
+    isGroup: true,
+  },
+  {
+    id: "q3_c1_1",
+    surveyId: "srv_03",
+    kode: "C1.1",
+    parentId: "q3_c1",
+    teks: "Ketepatan waktu layanan logistik",
+    tipe: "SKALA_KEPUASAN",
+    urutan: 1,
+    wajibDiisi: true,
+    isGroup: false,
+    ...snap("scl_puas4"),
+  },
+  {
+    id: "q3_c1_2",
+    surveyId: "srv_03",
+    kode: "C1.2",
+    parentId: "q3_c1",
+    teks: "Keandalan sistem pelacakan kargo (tracking)",
+    tipe: "SKALA_KEPUASAN",
+    urutan: 2,
+    wajibDiisi: true,
+    isGroup: false,
+    ...snap("scl_puas4"),
+  },
+  {
+    id: "q3_c1_3",
+    surveyId: "srv_03",
+    kode: "C1.3",
+    parentId: "q3_c1",
+    teks: "Kondisi & ketersediaan alat angkut/handling",
+    tipe: "SKALA_KEPUASAN",
+    urutan: 3,
+    wajibDiisi: true,
+    isGroup: false,
+    ...snap("scl_puas4"),
+  },
+
+  {
+    id: "q3_c2",
+    surveyId: "srv_03",
+    kode: "C2",
+    parentId: null,
+    teks: "Administrasi & keuangan",
+    tipe: "GRUP",
+    urutan: 2,
+    wajibDiisi: false,
+    isGroup: true,
+  },
+  {
+    id: "q3_c2_1",
+    surveyId: "srv_03",
+    kode: "C2.1",
+    parentId: "q3_c2",
+    teks: "Transparansi tarif & komponen biaya layanan",
+    tipe: "SKALA_KEPUASAN",
+    urutan: 1,
+    wajibDiisi: true,
+    isGroup: false,
+    ...snap("scl_puas4"),
+  },
+  {
+    id: "q3_c2_2",
+    surveyId: "srv_03",
+    kode: "C2.2",
+    parentId: "q3_c2",
+    teks: "Kecepatan proses penagihan/invoice",
+    tipe: "SKALA_KEPUASAN",
+    urutan: 2,
+    wajibDiisi: true,
+    isGroup: false,
+    ...snap("scl_puas4"),
+  },
+
+  {
+    id: "q3_c3",
+    surveyId: "srv_03",
+    kode: "C3",
+    parentId: null,
+    teks: "Seberapa besar kemungkinan Anda merekomendasikan layanan SPSL Group?",
+    tipe: "NPS",
+    urutan: 3,
+    wajibDiisi: true,
+    isGroup: false,
+    ...snap("scl_nps"),
+  },
+
+  {
+    id: "q3_c4",
+    surveyId: "srv_03",
+    kode: "C4",
+    parentId: null,
+    teks: "Apakah Anda menggunakan layanan terintegrasi (end-to-end)?",
+    tipe: "YA_TIDAK",
+    urutan: 4,
+    wajibDiisi: true,
+    isGroup: false,
+  },
+  {
+    id: "q3_c4_1",
+    surveyId: "srv_03",
+    kode: "C4.1",
+    parentId: "q3_c4",
+    teks: "Layanan SPSL Group apa yang Anda gunakan?",
+    tipe: "PILIHAN_GANDA",
+    urutan: 1,
+    wajibDiisi: false,
+    isGroup: false,
+    logic: {
+      conditions: [
+        { sourceQuestionKode: "C4", operator: "sama_dengan", value: "Ya" },
+      ],
+    },
+    options: [
+      { id: "opt_q3_c4_1_a", label: "Kepelabuhanan", urutan: 1 },
+      { id: "opt_q3_c4_1_b", label: "Pergudangan", urutan: 2 },
+      { id: "opt_q3_c4_1_c", label: "Transportasi darat", urutan: 3 },
+      { id: "opt_q3_c4_1_d", label: "Freight forwarding", urutan: 4 },
+      { id: "opt_q3_c4_1_e", label: "Kepabeanan (bea cukai)", urutan: 5 },
+    ],
+  },
+
+  {
+    id: "q3_c5",
+    surveyId: "srv_03",
+    kode: "C5",
+    parentId: null,
+    teks: "Layanan SPSL Group meningkatkan efisiensi rantai pasok perusahaan kami",
+    tipe: "SKALA_PERSETUJUAN",
+    urutan: 5,
+    wajibDiisi: true,
+    isGroup: false,
+    ...snap("scl_setuju4"),
+  },
+  {
+    id: "q3_c6",
+    surveyId: "srv_03",
+    kode: "C6",
+    parentId: null,
+    teks: "Frekuensi penggunaan layanan dalam sebulan",
+    tipe: "PILIHAN_TUNGGAL",
+    urutan: 6,
+    wajibDiisi: false,
+    isGroup: false,
+    acakOpsi: false,
+    options: [
+      { id: "opt_q3_c6_a", label: "1–5 kali", skor: 1, urutan: 1 },
+      { id: "opt_q3_c6_b", label: "6–15 kali", skor: 2, urutan: 2 },
+      { id: "opt_q3_c6_c", label: "Lebih dari 15 kali", skor: 3, urutan: 3 },
+    ],
+  },
+  {
+    id: "q3_c7",
+    surveyId: "srv_03",
+    kode: "C7",
+    parentId: null,
+    teks: "Masukan untuk pengembangan layanan SPSL Group",
+    tipe: "TEKS",
+    urutan: 7,
+    wajibDiisi: false,
+    isGroup: false,
+  },
+];
+
+// SKP-2023 (srv_04) — Domestik, arsip (lebih ringkas)
+const srv04Questions: Question[] = [
+  {
+    id: "q4_c1",
+    surveyId: "srv_04",
+    kode: "C1",
+    parentId: null,
+    teks: "Pelayanan umum",
+    tipe: "GRUP",
+    urutan: 1,
+    wajibDiisi: false,
+    isGroup: true,
+  },
+  {
+    id: "q4_c1_1",
+    surveyId: "srv_04",
+    kode: "C1.1",
+    parentId: "q4_c1",
+    teks: "Kebersihan & kenyamanan fasilitas pelabuhan",
+    tipe: "SKALA_KEPUASAN",
+    urutan: 1,
+    wajibDiisi: true,
+    isGroup: false,
+    ...snap("scl_puas4"),
+  },
+  {
+    id: "q4_c1_2",
+    surveyId: "srv_04",
+    kode: "C1.2",
+    parentId: "q4_c1",
+    teks: "Keramahan & kesigapan petugas",
+    tipe: "SKALA_KEPUASAN",
+    urutan: 2,
+    wajibDiisi: true,
+    isGroup: false,
+    ...snap("scl_puas4"),
+  },
+  {
+    id: "q4_c1_3",
+    surveyId: "srv_04",
+    kode: "C1.3",
+    parentId: "q4_c1",
+    teks: "Kecepatan proses layanan",
+    tipe: "SKALA_KEPUASAN",
+    urutan: 3,
+    wajibDiisi: true,
+    isGroup: false,
+    ...snap("scl_puas4"),
+  },
+
+  {
+    id: "q4_c2",
+    surveyId: "srv_04",
+    kode: "C2",
+    parentId: null,
+    teks: "Seberapa besar kemungkinan Anda merekomendasikan Pelindo?",
+    tipe: "NPS",
+    urutan: 2,
+    wajibDiisi: true,
+    isGroup: false,
+    ...snap("scl_nps"),
+  },
+  {
+    id: "q4_c3",
+    surveyId: "srv_04",
+    kode: "C3",
+    parentId: null,
+    teks: "Secara keseluruhan saya puas dengan layanan Pelindo",
+    tipe: "SKALA_PERSETUJUAN",
+    urutan: 3,
+    wajibDiisi: true,
+    isGroup: false,
+    ...snap("scl_setuju4"),
+  },
+  {
+    id: "q4_c4",
+    surveyId: "srv_04",
+    kode: "C4",
+    parentId: null,
+    teks: "Apakah Anda berencana menggunakan layanan Pelindo kembali?",
+    tipe: "YA_TIDAK",
+    urutan: 4,
+    wajibDiisi: true,
+    isGroup: false,
+  },
+  {
+    id: "q4_c5",
+    surveyId: "srv_04",
+    kode: "C5",
+    parentId: null,
+    teks: "Saran perbaikan untuk tahun berikutnya",
+    tipe: "TEKS",
+    urutan: 5,
+    wajibDiisi: false,
+    isGroup: false,
+  },
+];
+
+export const seedQuestions: Question[] = [
+  ...srv01Questions,
+  ...srv02Questions,
+  ...srv03Questions,
+  ...srv04Questions,
+];
+
+// ---- §12.3 Identity fields (grup "Identitas") ----
+type IdentitySpec = Pick<IdentityField, "nama" | "sumber" | "deskripsi">;
+
+function buildIdentity(
+  surveyId: string,
+  prefix: string,
+  spec: IdentitySpec[],
+): IdentityField[] {
+  return spec.map((f, i) => ({
+    id: `idf_${prefix}_${String(i + 1).padStart(2, "0")}`,
+    surveyId,
+    urutan: i + 1,
+    ...f,
+  }));
+}
+
+const identitySrv01: IdentitySpec[] = [
   {
     nama: "No Billing",
     sumber: "OTOMATIS",
@@ -361,9 +900,123 @@ const identitySpec: Array<
   },
 ];
 
-export const seedIdentityFields: IdentityField[] = identitySpec.map((f, i) => ({
-  id: `idf_${String(i + 1).padStart(2, "0")}`,
-  surveyId: "srv_01",
-  urutan: i + 1,
-  ...f,
-}));
+const identitySrv02: IdentitySpec[] = [
+  {
+    nama: "No Billing",
+    sumber: "OTOMATIS",
+    deskripsi: "Lookup dari database Pelindo",
+  },
+  {
+    nama: "Nama Kapal / Vessel",
+    sumber: "OTOMATIS",
+    deskripsi: "Lookup dari database Pelindo",
+  },
+  {
+    nama: "Nama Agen Pelayaran",
+    sumber: "OTOMATIS",
+    deskripsi: "Lookup dari database Pelindo",
+  },
+  {
+    nama: "Negara Asal / Tujuan",
+    sumber: "PILIHAN",
+    deskripsi: "Lookup dari database Pelindo",
+  },
+  {
+    nama: "Nama Responden",
+    sumber: "ISIAN",
+    deskripsi: "Diisi oleh Responden",
+  },
+  {
+    nama: "Email Responden",
+    sumber: "ISIAN",
+    deskripsi: "Diisi oleh Responden",
+  },
+  {
+    nama: "Jenis Layanan (Ekspor/Impor)",
+    sumber: "PILIHAN",
+    deskripsi: "Lookup dari database Pelindo",
+  },
+  {
+    nama: "Tanggal Pengisian",
+    sumber: "SISTEM",
+    deskripsi: "Diisi otomatis sistem",
+  },
+];
+
+const identitySrv03: IdentitySpec[] = [
+  {
+    nama: "No Kontrak",
+    sumber: "OTOMATIS",
+    deskripsi: "Lookup dari database SPSL Group",
+  },
+  {
+    nama: "Nama Perusahaan",
+    sumber: "OTOMATIS",
+    deskripsi: "Lookup dari database SPSL Group",
+  },
+  {
+    nama: "NPWP Perusahaan",
+    sumber: "OTOMATIS",
+    deskripsi: "Lookup dari database SPSL Group",
+  },
+  { nama: "Nama PIC", sumber: "ISIAN", deskripsi: "Diisi oleh Responden" },
+  {
+    nama: "Nomor WA/Handphone",
+    sumber: "ISIAN",
+    deskripsi: "Diisi oleh Responden",
+  },
+  {
+    nama: "Kategori Layanan",
+    sumber: "PILIHAN",
+    deskripsi: "Lookup dari database SPSL Group",
+  },
+  {
+    nama: "Tanggal Pengisian",
+    sumber: "SISTEM",
+    deskripsi: "Diisi otomatis sistem",
+  },
+];
+
+const identitySrv04: IdentitySpec[] = [
+  {
+    nama: "No Billing",
+    sumber: "OTOMATIS",
+    deskripsi: "Lookup dari database Pelindo",
+  },
+  {
+    nama: "Nama Cabang",
+    sumber: "OTOMATIS",
+    deskripsi: "Lookup dari database Pelindo",
+  },
+  {
+    nama: "Nama Responden",
+    sumber: "ISIAN",
+    deskripsi: "Diisi oleh Responden",
+  },
+  { nama: "Kategori Responden", sumber: "PILIHAN", deskripsi: "Lookup" },
+  {
+    nama: "Tanggal Pengisian",
+    sumber: "SISTEM",
+    deskripsi: "Diisi otomatis sistem",
+  },
+];
+
+export const seedIdentityFields: IdentityField[] = [
+  ...buildIdentity("srv_01", "01", identitySrv01),
+  ...buildIdentity("srv_02", "02", identitySrv02),
+  ...buildIdentity("srv_03", "03", identitySrv03),
+  ...buildIdentity("srv_04", "04", identitySrv04),
+];
+
+// ---- Finalize: turunkan denormalized count (cermin DATABASE.md §5) ----
+// childCount per grup & jumlahPertanyaan (non-grup) per survei — selalu sinkron dengan data.
+for (const q of seedQuestions) {
+  if (q.isGroup) {
+    q.childCount = seedQuestions.filter((c) => c.parentId === q.id).length;
+  }
+}
+for (const s of seedSurveys) {
+  s.jumlahPertanyaan = seedQuestions.filter(
+    (q) => q.surveyId === s.id && !q.isGroup,
+  ).length;
+}

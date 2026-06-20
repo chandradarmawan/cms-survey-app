@@ -11,9 +11,15 @@ perlu tabel sendiri. Hasilnya **4 tabel** yang mencerminkan persis 4 state array
 | Store array (front-end) | Tabel DB |
 |---|---|
 | `surveys` | `surveys` |
-| `questions` (berisi `options[]`, `logic`) | `questions` (+ kolom `options jsonb`, `logic jsonb`) |
-| `scales` (berisi `labels[]`) | `scales` (+ kolom `labels jsonb`) |
+| `questions` (berisi `options[]`, `logic`, `scale` snapshot) | `questions` (+ kolom `options jsonb`, `logic jsonb`, `scale jsonb`) |
+| `scales` (berisi `labels[]`) — **katalog master** | `scales` (+ kolom `labels jsonb`) |
 | `identityFields` | `identity_fields` |
+
+> **Skala = master data + snapshot.** `scales` adalah **katalog template** terpusat (dikelola di Master
+> data). Saat sebuah pertanyaan memilih skala, definisinya **disalin** jadi snapshot (`questions.scale`).
+> Mengedit/menghapus skala master **tidak** mengubah pertanyaan yang sudah memakainya — menjaga
+> integritas historis survei yang sudah aktif/selesai. `source_scale_id` hanya menyimpan asal template
+> (provenance) untuk fitur "perbarui dari master".
 
 > **Efek samping yang enak:** karena kolom JSONB menyimpan objek TS apa adanya, menerjemahkan
 > `src/store/seed.ts` jadi `INSERT` nyaris copy-paste, dan `src/data/*` hampir tak perlu ubah bentuk data.
@@ -31,7 +37,7 @@ erDiagram
     SURVEYS         ||--o{ IDENTITY_FIELDS : "memiliki"
     SURVEYS         |o--o{ SURVEYS : "diduplikat dari"
     QUESTIONS       ||--o{ QUESTIONS : "induk - anak (parentId)"
-    QUESTIONS       }o--o| SCALES : "memakai skala"
+    QUESTIONS       }o--o| SCALES : "asal snapshot (provenance)"
 
     SURVEYS {
         uuid id PK
@@ -58,10 +64,11 @@ erDiagram
         int urutan
         boolean wajib_diisi
         boolean acak_opsi "nullable"
-        uuid scale_id FK "nullable"
+        uuid source_scale_id FK "nullable, provenance"
         boolean is_group "generated"
         jsonb options "array opsi (nullable)"
         jsonb logic "kondisi tampil (nullable)"
+        jsonb scale "snapshot skala (nullable)"
     }
     SCALES {
         uuid id PK
@@ -86,11 +93,14 @@ erDiagram
 |---|---|---|
 | Survey → Question | 1 : N (cascade) | `questions.survey_id` |
 | Question → Question (hirarki) | 1 : N self-ref (cascade) | `questions.parent_id` |
-| Question → Scale | N : 1 opsional | `questions.scale_id` |
+| Question → Scale (provenance) | N : 1 opsional, **ON DELETE SET NULL** | `questions.source_scale_id` |
 | Survey → IdentityField | 1 : N (cascade) | `identity_fields.survey_id` |
 | Survey → Survey (duplikat) | N : 1 opsional self-ref | `surveys.duplicated_from_id` |
 
-`options`, `logic`, dan `labels` **bukan** relasi — mereka tersimpan di dalam baris induk.
+`options`, `logic`, `labels`, dan `scale` (snapshot) **bukan** relasi — mereka tersimpan di dalam baris
+induk. Relasi `Question → Scale` kini **lunak** (provenance saja): render memakai `questions.scale`
+snapshot, bukan `JOIN scales`. Karena itu skala master boleh dihapus tanpa merusak survei lama
+(FK `SET NULL`, bukan `RESTRICT`).
 
 ---
 
@@ -132,7 +142,11 @@ CREATE TABLE surveys (
 );
 ```
 
-### 2.3 `scales`  (global, `labels` sebagai JSONB)
+### 2.3 `scales`  (katalog master, `labels` sebagai JSONB)
+
+Katalog template terpusat (dikelola di Master data). **Tidak** dibaca saat render survei — nilai yang
+dipakai pertanyaan ada di `questions.scale` (snapshot). Karena itu baris di sini boleh diedit/dihapus
+bebas tanpa memengaruhi survei lama.
 
 ```sql
 CREATE TABLE scales (
@@ -146,25 +160,26 @@ CREATE TABLE scales (
 );
 ```
 
-### 2.4 `questions`  (`options` & `logic` sebagai JSONB)
+### 2.4 `questions`  (`options`, `logic`, `scale` sebagai JSONB)
 
 ```sql
 CREATE TABLE questions (
-  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  survey_id   uuid          NOT NULL REFERENCES surveys(id) ON DELETE CASCADE,
-  parent_id   uuid          REFERENCES questions(id)        ON DELETE CASCADE,
-  kode        text          NOT NULL,                  -- "C1", "C3.1"
-  teks        text          NOT NULL,
-  tipe        question_type NOT NULL,
-  urutan      integer       NOT NULL,
-  wajib_diisi boolean       NOT NULL DEFAULT false,
-  acak_opsi   boolean,                                 -- hanya tipe pilihan
-  scale_id    uuid          REFERENCES scales(id) ON DELETE RESTRICT,
-  is_group    boolean       GENERATED ALWAYS AS (tipe = 'GRUP') STORED,
-  options     jsonb,                                   -- array opsi; null bila bukan tipe pilihan
-  logic       jsonb,                                   -- { conditions: [...] }; null bila tanpa logika
-  created_at  timestamptz   NOT NULL DEFAULT now(),
-  updated_at  timestamptz   NOT NULL DEFAULT now(),
+  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  survey_id       uuid          NOT NULL REFERENCES surveys(id) ON DELETE CASCADE,
+  parent_id       uuid          REFERENCES questions(id)        ON DELETE CASCADE,
+  kode            text          NOT NULL,              -- "C1", "C3.1"
+  teks            text          NOT NULL,
+  tipe            question_type NOT NULL,
+  urutan          integer       NOT NULL,
+  wajib_diisi     boolean       NOT NULL DEFAULT false,
+  acak_opsi       boolean,                             -- hanya tipe pilihan
+  source_scale_id uuid          REFERENCES scales(id) ON DELETE SET NULL,  -- provenance saja
+  is_group        boolean       GENERATED ALWAYS AS (tipe = 'GRUP') STORED,
+  options         jsonb,                               -- array opsi; null bila bukan tipe pilihan
+  logic           jsonb,                               -- { conditions: [...] }; null bila tanpa logika
+  scale           jsonb,                               -- snapshot skala (SKALA_*, NPS); null selainnya
+  created_at      timestamptz   NOT NULL DEFAULT now(),
+  updated_at      timestamptz   NOT NULL DEFAULT now(),
   UNIQUE (survey_id, kode)
 );
 
@@ -174,6 +189,10 @@ CREATE INDEX idx_questions_parent ON questions (parent_id);
 
 > **Hirarki & cascade** sama seperti front-end: flat + `parent_id`, `ON DELETE CASCADE` meniru
 > `deleteQuestion` yang menghapus seluruh keturunan. `is_group` generated → mustahil tak sinkron dengan `tipe`.
+>
+> **Snapshot skala** (`scale`) di-isi saat pertanyaan memilih skala (salin dari master). `source_scale_id`
+> hanya menandai asal template (untuk "perbarui dari master"); `ON DELETE SET NULL` karena menghapus
+> skala master **tidak boleh** menghapus pertanyaan — snapshot-nya tetap utuh.
 
 ### 2.5 `identity_fields`
 
@@ -215,6 +234,15 @@ Kolom JSONB menyimpan **persis** tipe dari `src/types/index.ts`:
 
 // scales.labels  ←  string[]
 ["Sangat tidak puas", "Tidak puas", "Puas", "Sangat puas"]
+
+// questions.scale  ←  ScaleSnapshot  (Scale tanpa `id`; SKALA_* / NPS)
+{
+  "nama": "Skala puas (4 poin)",
+  "tipe": "KEPUASAN",
+  "poin": 4,
+  "labels": ["Sangat tidak puas", "Tidak puas", "Puas", "Sangat puas"]
+  // NPS juga membawa "endpointKiri" / "endpointKanan"
+}
 ```
 
 Reorder opsi/kondisi = tulis ulang array JSONB (operasi murah, persis seperti store menyusun array).
@@ -232,7 +260,8 @@ Reorder opsi/kondisi = tulis ulang array JSONB (operasi murah, persis seperti st
 | `Question.logic` | `questions.logic` (jsonb) | verbatim |
 | `Question.isGroup` | `questions.is_group` | generated `tipe='GRUP'` |
 | `Question.childCount` | — (derived saat baca) | `COUNT(*) WHERE parent_id=…` |
-| `Question.scaleId` | `questions.scale_id` (FK) | hanya tipe skala |
+| `Question.sourceScaleId` | `questions.source_scale_id` (FK, SET NULL) | provenance saja (asal template) |
+| `Question.scale` (snapshot) | `questions.scale` (jsonb) | dipakai render; lepas dari master |
 | `Scale.labels[]` | `scales.labels` (jsonb) | verbatim |
 | `Condition.sourceQuestionKode` | di dalam `logic` jsonb | tetap berbasis `kode` (lihat trade-off §8) |
 
@@ -303,6 +332,9 @@ JSONB menukar kemudahan dengan dua hal:
   DB tidak menjamin pertanyaan sumber ada — aplikasi yang memvalidasi.
 - **Query ke dalam array lebih ribet.** "Semua pertanyaan yang punya opsi dengan skor 4" perlu
   operator JSONB (`@>`, `jsonb_array_elements`), bukan `JOIN` biasa.
+- **Snapshot skala = duplikasi terkendali.** `questions.scale` menyalin definisi master. Ini disengaja
+  (integritas historis), bukan anomali normalisasi — sumber kebenaran tiap pertanyaan adalah snapshot-nya
+  sendiri. Tukar dengan: edit master tidak otomatis menyebar (perlu aksi "perbarui dari master").
 
 Selama backend hanya **menyimpan & menyajikan** kuesioner (kasus saat ini), itu tak masalah. Pindah ke
 tabel anak (`question_options`, `question_conditions`, `scale_labels`) hanya bila Anda butuh:
@@ -320,3 +352,6 @@ Migrasinya searah: tinggal "ledakkan" array JSONB ke baris-baris tabel anak.
 4. **Pindahkan invarian ke server:** count via query §5, cascade via FK, `is_group` via generated column,
    kode otomatis (`nextKode`) jadi logika service.
 5. **Transaksi** untuk operasi multi-baris: duplikasi survei (salin questions + remap `parent_id`) dan reorder.
+   Snapshot `scale` ikut tersalin apa adanya — tak perlu ambil ulang dari katalog master.
+6. **Master skala** (`scales`) jadi endpoint CRUD terpisah (Master data). Saat pertanyaan memilih skala,
+   service menyalin definisi master ke `questions.scale` + set `source_scale_id`.

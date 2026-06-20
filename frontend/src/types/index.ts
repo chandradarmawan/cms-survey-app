@@ -62,7 +62,9 @@ export interface Question {
   urutan: number;
   wajibDiisi: boolean;
   acakOpsi?: boolean; // hanya tipe pilihan
-  scaleId?: string; // ref ke Scale (SKALA_*, NPS)
+  // Skala: snapshot terpisah dari master (lihat docs/DATABASE.md §2.4).
+  sourceScaleId?: string; // asal template master (untuk re-sync), BUKAN untuk render
+  scale?: ScaleSnapshot; // snapshot yang dipakai render/preview/logika (SKALA_*, NPS)
   options?: QuestionOption[]; // PILIHAN_TUNGGAL / PILIHAN_GANDA
   logic?: ConditionGroup; // logika tampil
   isGroup: boolean; // true bila tipe GRUP
@@ -78,6 +80,10 @@ export interface Scale {
   endpointKiri?: string; // NPS
   endpointKanan?: string; // NPS
 }
+
+// Snapshot skala yang ditanam di Question (lepas dari master = id dibuang).
+// Edit master tidak mengubah snapshot lama → menjaga integritas historis.
+export type ScaleSnapshot = Omit<Scale, 'id'>;
 
 export interface IdentityField {
   id: string;

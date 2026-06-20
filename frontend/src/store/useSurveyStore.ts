@@ -41,6 +41,11 @@ interface SurveyState {
   updateSurvey: (id: string, patch: Partial<Survey>) => void;
   activateSurvey: (id: string) => void;
 
+  // Master data: katalog skala (global). Snapshot di question lepas dari katalog ini.
+  addScale: (s: Omit<Scale, 'id'>) => Scale;
+  updateScale: (id: string, patch: Partial<Scale>) => void;
+  deleteScale: (id: string) => void;
+
   addQuestion: (surveyId: string, q: Omit<Question, 'id' | 'surveyId'>) => Question;
   updateQuestion: (qid: string, patch: Partial<Question>) => void;
   deleteQuestion: (qid: string) => void;
@@ -132,6 +137,27 @@ export const useSurveyStore = create<SurveyState>((set, get) => ({
     })),
 
   activateSurvey: (id) => get().updateSurvey(id, { status: 'aktif' }),
+
+  addScale: (s) => {
+    const scale: Scale = { ...s, id: genId('scl') };
+    set((st) => ({ scales: [...st.scales, scale] }));
+    return scale;
+  },
+
+  // Edit katalog TIDAK menyentuh snapshot di question (integritas historis).
+  updateScale: (id, patch) =>
+    set((st) => ({
+      scales: st.scales.map((sc) => (sc.id === id ? { ...sc, ...patch } : sc)),
+    })),
+
+  // Hapus katalog aman: question tetap pegang snapshot; cukup putus provenance.
+  deleteScale: (id) =>
+    set((st) => ({
+      scales: st.scales.filter((sc) => sc.id !== id),
+      questions: st.questions.map((q) =>
+        q.sourceScaleId === id ? { ...q, sourceScaleId: undefined } : q,
+      ),
+    })),
 
   addQuestion: (surveyId, q) => {
     const question: Question = { ...q, id: genId('q'), surveyId };

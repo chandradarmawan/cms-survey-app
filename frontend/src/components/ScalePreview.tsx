@@ -1,7 +1,8 @@
 // Preview skala read-only (PRD §8.4). Pill chips untuk skala, baris 0–10 untuk NPS.
-import type { Scale } from '@/types';
+// Menerima ScaleSnapshot (Scale tanpa id) — dipakai dari katalog master & snapshot question.
+import type { ScaleSnapshot } from '@/types';
 
-export function ScalePreview({ scale }: { scale: Scale }) {
+export function ScalePreview({ scale }: { scale: ScaleSnapshot }) {
   if (scale.tipe === 'NPS') {
     return (
       <div className="flex flex-wrap items-center gap-2">

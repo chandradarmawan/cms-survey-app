@@ -1,5 +1,5 @@
 // Metadata tipe pertanyaan (label, ikon, badge tree). PRD §8.3 / §8.4.
-import type { Question, QuestionType } from '@/types';
+import type { Question, QuestionType, Scale, ScaleSnapshot } from '@/types';
 
 export const QUESTION_TYPE_META: Record<QuestionType, { label: string; icon: string }> = {
   GRUP: { label: 'Grup / Bagian', icon: 'folder' },
@@ -75,4 +75,19 @@ export function scaleTypeFor(t: QuestionType): 'KEPUASAN' | 'PERSETUJUAN' | 'NPS
   if (t === 'SKALA_PERSETUJUAN') return 'PERSETUJUAN';
   if (t === 'NPS') return 'NPS';
   return null;
+}
+
+/**
+ * Salin definisi master Scale jadi snapshot yang ditanam di Question (buang `id`,
+ * klon array `labels`). Dipakai seed, editor (pilih/re-sync), dan duplikasi survei.
+ */
+export function scaleSnapshot(s: Scale): ScaleSnapshot {
+  return {
+    nama: s.nama,
+    tipe: s.tipe,
+    poin: s.poin,
+    labels: [...s.labels],
+    endpointKiri: s.endpointKiri,
+    endpointKanan: s.endpointKanan,
+  };
 }

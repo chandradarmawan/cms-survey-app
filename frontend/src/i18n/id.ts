@@ -24,12 +24,20 @@ export const labelIdentitySource: Record<IdentitySource, string> = {
 export const ui = {
   brand: 'CMS Survei Kepuasan Pelanggan',
   brandShort: 'Survey CMS',
+  // Navigasi global (top tabs).
   tabs: {
     surveys: 'Daftar survei',
-    questions: 'Kelola pertanyaan',
-    scales: 'Skala & opsi',
     masterData: 'Master data',
+  },
+  // Sub-navigasi di dalam detail survei (underline tabs sekunder).
+  surveyTabs: {
+    questions: 'Kelola pertanyaan',
     results: 'Hasil & laporan',
+  },
+  // Sub-navigasi di dalam Master data.
+  masterTabs: {
+    scales: 'Skala jawaban',
+    lookup: 'Lookup identitas',
   },
   surveyList: {
     title: 'Daftar Survei',

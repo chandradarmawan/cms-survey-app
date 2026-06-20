@@ -2,10 +2,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Icon } from '@/components/Icon';
-import { StatusBadge } from '@/components/StatusBadge';
 import { Toast } from '@/components/Toast';
 import { useSurveyStore } from '@/store/useSurveyStore';
-import { activateSurvey } from '@/data/surveys';
 import { getQuestions } from '@/data/questions';
 import { getIdentityFields } from '@/data/identity';
 import { QuestionTree } from './QuestionTree';
@@ -47,61 +45,15 @@ export function QuestionManagePage() {
     }
   }, [location, navigate]);
 
-  if (!survey) {
-    return (
-      <div className="card mx-auto max-w-md p-8 text-center">
-        <p className="text-body-lg font-medium">Survei tidak ditemukan</p>
-        <button className="btn-secondary mt-4" onClick={() => navigate('/surveys')}>
-          Kembali ke Daftar Survei
-        </button>
-      </div>
-    );
-  }
+  // Konteks survei (header + sub-tabs) dijamin oleh SurveyDetailLayout.
+  if (!survey) return null;
 
   const surveyQuestions = getQuestions(questions, surveyId);
   const surveyIdentity = getIdentityFields(identityFields, surveyId);
   const isEmpty = surveyQuestions.length === 0 && surveyIdentity.length === 0;
 
   return (
-    <div className="mx-auto max-w-7xl">
-      {/* Sub-header konteks survei */}
-      <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => navigate('/surveys')}
-            className="flex h-9 w-9 items-center justify-center rounded text-text-secondary hover:bg-primary-tint"
-            aria-label="Kembali"
-          >
-            <Icon name="arrow_back" size={20} />
-          </button>
-          <div>
-            <h1 className="text-headline-sm">{survey.nama}</h1>
-            <div className="mt-0.5 flex items-center gap-2">
-              <span className="font-mono text-body-sm text-text-secondary">{survey.kode}</span>
-              <StatusBadge status={survey.status} />
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button className="btn-secondary" onClick={() => showToast('Preview tersedia setelah modul responden')}>
-            <Icon name="visibility" size={18} />
-            Preview
-          </button>
-          {survey.status === 'draft' && (
-            <button
-              className="btn-primary"
-              onClick={() => {
-                activateSurvey(survey.id);
-                showToast('Survei diaktifkan');
-              }}
-            >
-              <Icon name="rocket_launch" size={18} />
-              Aktifkan
-            </button>
-          )}
-        </div>
-      </div>
-
+    <>
       {/* Banner post-duplicate */}
       {survey.duplicatedFrom && (
         <div className="mb-4 flex items-center gap-2 rounded border border-primary/20 bg-primary-tint px-4 py-3 text-body-md text-primary">
@@ -113,7 +65,7 @@ export function QuestionManagePage() {
       {isEmpty && selection.kind === 'none' ? (
         <EmptyFirstRun onAddFirst={() => setSelection({ kind: 'add', parentId: null })} onToast={showToast} />
       ) : (
-        <div className="grid h-[calc(100vh-15rem)] grid-cols-1 gap-6 lg:grid-cols-[minmax(320px,38%)_1fr]">
+        <div className="grid h-[calc(100vh-19rem)] grid-cols-1 gap-6 lg:grid-cols-[minmax(320px,38%)_1fr]">
           <div className="card overflow-hidden">
             <QuestionTree
               surveyId={surveyId}
@@ -169,7 +121,7 @@ export function QuestionManagePage() {
       )}
 
       {toast && <Toast key={toast.id} message={toast.msg} onDismiss={() => setToast(null)} />}
-    </div>
+    </>
   );
 }
 

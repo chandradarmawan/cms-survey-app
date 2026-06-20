@@ -1,20 +1,13 @@
-// Shell aplikasi: header sticky + 5 top tabs + slot konten (PRD §3).
+// Shell aplikasi: header sticky + top tabs global + slot konten (PRD §3).
+// Tab survey-scoped (pertanyaan/skala/hasil) kini jadi sub-tab di SurveyDetailLayout.
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Icon } from '@/components/Icon';
-import { StatusBadge } from '@/components/StatusBadge';
-import { useSurveyStore } from '@/store/useSurveyStore';
 import { ui } from '@/i18n/id';
-
-/** Ekstrak surveyId aktif dari URL (hanya pada rute survey-scoped). */
-function surveyIdFromPath(pathname: string): string | null {
-  const m = pathname.match(/^\/surveys\/([^/]+)\//);
-  return m ? m[1] : null;
-}
 
 interface TabDef {
   key: string;
   label: string;
-  href: string | null; // null = butuh survei tapi belum ada
+  href: string;
   active: boolean;
 }
 
@@ -22,38 +15,20 @@ export function AppShell() {
   const location = useLocation();
   const navigate = useNavigate();
   const path = location.pathname;
-  const surveyId = surveyIdFromPath(path);
-  const survey = useSurveyStore((s) =>
-    surveyId ? s.surveys.find((sv) => sv.id === surveyId) : undefined,
-  );
-
-  const scoped = (suffix: string) => (surveyId ? `/surveys/${surveyId}/${suffix}` : null);
 
   const tabs: TabDef[] = [
-    { key: 'surveys', label: ui.tabs.surveys, href: '/surveys', active: path === '/surveys' },
     {
-      key: 'questions',
-      label: ui.tabs.questions,
-      href: scoped('questions'),
-      active: path.endsWith('/questions'),
-    },
-    {
-      key: 'scales',
-      label: ui.tabs.scales,
-      href: scoped('scales'),
-      active: path.endsWith('/scales'),
+      key: 'surveys',
+      label: ui.tabs.surveys,
+      href: '/surveys',
+      // Aktif untuk daftar survei maupun saat berada di dalam detail survei.
+      active: path === '/surveys' || path.startsWith('/surveys/'),
     },
     {
       key: 'masterData',
       label: ui.tabs.masterData,
       href: '/master-data',
       active: path.startsWith('/master-data'),
-    },
-    {
-      key: 'results',
-      label: ui.tabs.results,
-      href: scoped('results'),
-      active: path.endsWith('/results'),
     },
   ];
 
@@ -72,15 +47,6 @@ export function AppShell() {
             <span className="text-headline-sm">{ui.brand}</span>
           </button>
 
-          {survey && (
-            <div className="flex items-center gap-2">
-              <span className="rounded-full bg-primary-tint px-2.5 py-1 font-mono text-body-sm text-primary">
-                {survey.kode}
-              </span>
-              <StatusBadge status={survey.status} />
-            </div>
-          )}
-
           <div className="ml-auto flex items-center gap-1">
             <button className="flex h-10 w-10 items-center justify-center rounded text-text-secondary hover:bg-primary-tint">
               <Icon name="notifications" />
@@ -94,22 +60,11 @@ export function AppShell() {
           </div>
         </div>
 
-        {/* Top tabs */}
+        {/* Top tabs global */}
         <nav className="flex items-center gap-1 px-6" role="tablist">
           {tabs.map((tab) => {
             const base =
               'relative h-12 px-4 text-body-md font-medium transition-colors border-b-2';
-            if (!tab.href) {
-              return (
-                <span
-                  key={tab.key}
-                  title="Pilih survei terlebih dahulu"
-                  className={`${base} cursor-not-allowed border-transparent text-text-secondary/50`}
-                >
-                  {tab.label}
-                </span>
-              );
-            }
             return (
               <Link
                 key={tab.key}

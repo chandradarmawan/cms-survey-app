@@ -1,5 +1,6 @@
 // Editor pertanyaan 8 tipe (PRD §8.4) — satu template, Section 3 ditukar per tipe (§14.4).
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { FormField } from '@/components/FormField';
 import { Toggle } from '@/components/Toggle';
 import { Icon } from '@/components/Icon';
@@ -10,8 +11,8 @@ import { ConditionBuilder } from './ConditionBuilder';
 import { useSurveyStore } from '@/store/useSurveyStore';
 import { addQuestion, deleteQuestion, updateQuestion } from '@/data/questions';
 import { genId } from '@/lib/id';
-import { isPilihan, isSkala, nextKode, scaleTypeFor } from '@/lib/questionMeta';
-import type { Condition, Question, QuestionOption, QuestionType, Scale } from '@/types';
+import { isPilihan, isSkala, nextKode, scaleSnapshot, scaleTypeFor } from '@/lib/questionMeta';
+import type { Condition, Question, QuestionOption, QuestionType, Scale, ScaleSnapshot } from '@/types';
 
 interface QuestionEditorProps {
   surveyId: string;
@@ -32,7 +33,8 @@ interface Draft {
   urutan: number;
   wajibDiisi: boolean;
   acakOpsi: boolean;
-  scaleId?: string;
+  sourceScaleId?: string; // asal template master (untuk re-sync)
+  scale?: ScaleSnapshot; // snapshot yang dipakai render/preview
   options: QuestionOption[];
   conditions: Condition[];
 }
@@ -52,9 +54,17 @@ function descendantIds(questions: Question[], rootId: string): Set<string> {
   return set;
 }
 
-function defaultsForType(tipe: QuestionType, scales: Scale[]): { scaleId?: string; options: QuestionOption[] } {
+function defaultsForType(
+  tipe: QuestionType,
+  scales: Scale[],
+): { sourceScaleId?: string; scale?: ScaleSnapshot; options: QuestionOption[] } {
   const st = scaleTypeFor(tipe);
-  if (st) return { scaleId: scales.find((s) => s.tipe === st)?.id, options: [] };
+  if (st) {
+    const master = scales.find((s) => s.tipe === st);
+    return master
+      ? { sourceScaleId: master.id, scale: scaleSnapshot(master), options: [] }
+      : { options: [] };
+  }
   if (isPilihan(tipe)) {
     return {
       options: [
@@ -93,7 +103,8 @@ export function QuestionEditor({
         urutan: q.urutan,
         wajibDiisi: q.wajibDiisi,
         acakOpsi: q.acakOpsi ?? false,
-        scaleId: q.scaleId,
+        sourceScaleId: q.sourceScaleId,
+        scale: q.scale,
         options: q.options ? q.options.map((o) => ({ ...o })) : [],
         conditions: q.logic?.conditions ? q.logic.conditions.map((c) => ({ ...c })) : [],
       };
@@ -128,7 +139,20 @@ export function QuestionEditor({
     (q) => q.surveyId === surveyId && q.isGroup && q.id !== questionId && !excluded.has(q.id),
   );
 
-  const selectedScale = draft.scaleId ? scales.find((s) => s.id === draft.scaleId) : undefined;
+  // Pilih skala master → simpan provenance + snapshot baru ke draft.
+  const selectScale = (id: string) => {
+    const master = scales.find((s) => s.id === id);
+    patch({ sourceScaleId: id, scale: master ? scaleSnapshot(master) : undefined });
+  };
+  // Deteksi snapshot usang vs master (master diedit setelah skala dipilih).
+  const masterScale = draft.sourceScaleId
+    ? scales.find((s) => s.id === draft.sourceScaleId)
+    : undefined;
+  const isScaleStale =
+    !!masterScale &&
+    !!draft.scale &&
+    JSON.stringify(scaleSnapshot(masterScale)) !== JSON.stringify(draft.scale);
+  const resyncScale = () => masterScale && patch({ scale: scaleSnapshot(masterScale) });
 
   // ---- opsi (pilihan) ----
   const addOption = () =>
@@ -195,7 +219,8 @@ export function QuestionEditor({
       urutan: draft.urutan,
       wajibDiisi: draft.tipe === 'GRUP' ? false : draft.wajibDiisi,
       acakOpsi: draft.tipe === 'PILIHAN_TUNGGAL' ? draft.acakOpsi : undefined,
-      scaleId: isSkala(draft.tipe) ? draft.scaleId : undefined,
+      sourceScaleId: isSkala(draft.tipe) ? draft.sourceScaleId : undefined,
+      scale: isSkala(draft.tipe) ? draft.scale : undefined,
       options: isPilihan(draft.tipe) ? cleanOptions : undefined,
       logic: draft.conditions.length ? { conditions: draft.conditions } : undefined,
       isGroup: draft.tipe === 'GRUP',
@@ -318,8 +343,9 @@ export function QuestionEditor({
         <Section3
           draft={draft}
           scales={scales}
-          selectedScale={selectedScale}
-          onScaleChange={(id) => patch({ scaleId: id })}
+          isScaleStale={isScaleStale}
+          onSelectScale={selectScale}
+          onResyncScale={resyncScale}
           onAcakChange={(v) => patch({ acakOpsi: v })}
           onAddOption={addOption}
           onUpdateOption={updateOption}
@@ -381,8 +407,9 @@ export function QuestionEditor({
 interface Section3Props {
   draft: Draft;
   scales: Scale[];
-  selectedScale?: Scale;
-  onScaleChange: (id: string) => void;
+  isScaleStale: boolean;
+  onSelectScale: (id: string) => void;
+  onResyncScale: () => void;
   onAcakChange: (v: boolean) => void;
   onAddOption: () => void;
   onUpdateOption: (id: string, p: Partial<QuestionOption>) => void;
@@ -394,8 +421,9 @@ interface Section3Props {
 function Section3({
   draft,
   scales,
-  selectedScale,
-  onScaleChange,
+  isScaleStale,
+  onSelectScale,
+  onResyncScale,
   onAcakChange,
   onAddOption,
   onUpdateOption,
@@ -423,6 +451,7 @@ function Section3({
 
   if (st) {
     const matching = scales.filter((s) => s.tipe === st);
+    const masterMissing = !draft.sourceScaleId || !matching.some((s) => s.id === draft.sourceScaleId);
     return (
       <div className="space-y-3">
         <FormField label="Skala jawaban" htmlFor="q-scale">
@@ -430,22 +459,36 @@ function Section3({
             <select
               id="q-scale"
               className="input"
-              value={draft.scaleId ?? ''}
-              onChange={(e) => onScaleChange(e.target.value)}
+              value={draft.sourceScaleId ?? ''}
+              onChange={(e) => onSelectScale(e.target.value)}
             >
+              {masterMissing && <option value="">— pilih skala —</option>}
               {matching.map((s) => (
                 <option key={s.id} value={s.id}>
                   {s.nama}
                 </option>
               ))}
             </select>
-            <span className="shrink-0 text-body-sm text-primary">Kelola skala</span>
+            <Link to="/master-data/scales" className="shrink-0 text-body-sm text-primary hover:underline">
+              Kelola skala
+            </Link>
           </div>
         </FormField>
-        {selectedScale && (
+
+        {isScaleStale && (
+          <div className="flex items-center gap-2 rounded border border-accent/30 bg-[#FFF7ED] px-3 py-2 text-body-sm text-[#C2410C]">
+            <Icon name="sync_problem" size={16} className="shrink-0" />
+            <span className="flex-1">Skala master telah berubah sejak dipilih.</span>
+            <button type="button" className="btn-ghost px-2 text-body-sm text-[#C2410C]" onClick={onResyncScale}>
+              Perbarui dari master
+            </button>
+          </div>
+        )}
+
+        {draft.scale && (
           <div className="card bg-background p-4">
             <p className="mb-2 text-label-md uppercase text-text-secondary">Preview</p>
-            <ScalePreview scale={selectedScale} />
+            <ScalePreview scale={draft.scale} />
           </div>
         )}
       </div>
